@@ -1,5 +1,5 @@
 // src/pages/MyCases.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,29 @@ import { Button } from "@/components/ui/button";
 import { CaseCard } from "@/components/cases/CaseCard";
 import { CreateCaseModal } from "@/components/cases/create-case-modal";
 import { mockCases } from "@/data/mockCases";
+import { getCases } from "@/services/caseService";
+import { CaseFile } from "@/types/case";
 
 const MyCases = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [allCases, setAllCases] = useState<CaseFile[]>(mockCases);
 
-  const filteredCases = mockCases.filter(
+  useEffect(() => {
+    const loadCases = async () => {
+      const storedCases = await getCases();
+      // Merge stored cases with mock cases, avoiding duplicates
+      const mergedCases = [
+        ...storedCases,
+        ...mockCases.filter(
+          (mock) => !storedCases.some((stored) => stored.id === mock.id)
+        ),
+      ];
+      setAllCases(mergedCases);
+    };
+    loadCases();
+  }, []);
+
+  const filteredCases = allCases.filter(
     (c) =>
       c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.caseNumber.toLowerCase().includes(searchQuery.toLowerCase())
