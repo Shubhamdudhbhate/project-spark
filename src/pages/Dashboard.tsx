@@ -5,14 +5,11 @@ import { cn } from "@/lib/utils";
 import MyCases from "./MyCases";
 
 const Dashboard = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed] = useState(false);
 
   return (
     <div className="min-h-screen bg-background grid-background">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
+      <Sidebar collapsed={sidebarCollapsed} />
 
       <main
         className={cn(

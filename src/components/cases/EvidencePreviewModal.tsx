@@ -71,6 +71,9 @@ export const EvidencePreviewModal = ({
   const isVideo = evidence.fileType.includes("video");
   const isAudio = evidence.fileType.includes("audio");
   const isImage = evidence.fileType.includes("image");
+  
+  // Get the actual file URL from the evidence
+  const fileUrl = evidence.fileUrl || "#";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -88,10 +91,9 @@ export const EvidencePreviewModal = ({
             {isVideo && (
               <video
                 controls
-                className="w-full h-full object-contain"
-                poster="/placeholder.svg"
+                className="w-full h-full object-contain bg-black"
+                src={fileUrl}
               >
-                <source src="#" type="video/mp4" />
                 Your browser does not support video playback.
               </video>
             )}
@@ -99,15 +101,15 @@ export const EvidencePreviewModal = ({
               <div className="p-8 w-full">
                 <div className="p-6 rounded-lg bg-background/50 flex flex-col items-center gap-4">
                   <Music className="w-16 h-16 text-primary" />
-                  <audio controls className="w-full">
-                    <source src="#" type="audio/mpeg" />
+                  <audio controls className="w-full" src={fileUrl}>
+                    Your browser does not support audio playback.
                   </audio>
                 </div>
               </div>
             )}
             {isImage && (
               <img
-                src="/placeholder.svg"
+                src={fileUrl}
                 alt={evidence.fileName}
                 className="w-full h-full object-contain"
               />

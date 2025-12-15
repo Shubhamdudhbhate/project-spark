@@ -7,7 +7,6 @@ import {
   History,
   Settings,
   LogOut,
-  ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,10 +21,9 @@ const navItems = [
 
 interface SidebarProps {
   collapsed?: boolean;
-  onToggle?: () => void;
 }
 
-export const Sidebar = ({ collapsed = false, onToggle }: SidebarProps) => {
+export const Sidebar = ({ collapsed = false }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -92,23 +90,19 @@ export const Sidebar = ({ collapsed = false, onToggle }: SidebarProps) => {
         })}
       </nav>
 
-      {/* Collapse Toggle */}
-      <div className="p-4 border-t border-white/5">
-        <div className="flex items-center gap-2 ml-auto">
       {/* Logout */}
       <div className="p-4 border-t border-white/5">
-        <Link to="/">
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all",
-              collapsed ? "justify-center" : "justify-start"
-            )}
-          >
-            <LogOut className="w-5 h-5" />
-            {!collapsed && <span className="ml-3">Logout</span>}
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          onClick={handleLogout}
+          className={cn(
+            "w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all",
+            collapsed ? "justify-center" : "justify-start"
+          )}
+        >
+          <LogOut className="w-5 h-5" />
+          {!collapsed && <span className="ml-3">Logout</span>}
+        </Button>
       </div>
     </motion.aside>
   );
