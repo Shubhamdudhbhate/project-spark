@@ -1,8 +1,7 @@
 // src/components/cases/create-case-modal.tsx
-"use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { Plus } from "lucide-react"
@@ -39,7 +38,7 @@ type FormData = {
 }
 
 export function CreateCaseModal() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -92,8 +91,7 @@ export function CreateCaseModal() {
       })
       
       setOpen(false)
-      router.push(`/cases/${newCase.id}`)
-      router.refresh()
+      navigate(`/cases/${newCase.id}`)
       
     } catch (error) {
       console.error("Error creating case:", error)
