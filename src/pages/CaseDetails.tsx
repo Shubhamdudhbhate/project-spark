@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Scale, User, Calendar, FileText, Users, LayoutGrid } from "lucide-react";
@@ -27,6 +27,17 @@ const CaseDetails = () => {
   const [signModalOpen, setSignModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
+
+  useEffect(() => {
+    // Cleanup blob URLs when leaving the page / evidence list changes
+    return () => {
+      evidence.forEach((e) => {
+        if (e.fileUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(e.fileUrl);
+        }
+      });
+    };
+  }, [evidence]);
 
   if (!caseFile) {
     return (
@@ -64,6 +75,7 @@ const CaseDetails = () => {
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
+      fileUrl: URL.createObjectURL(file),
       type,
       status: "draft",
       uploadedBy: "Officer A. Verma",

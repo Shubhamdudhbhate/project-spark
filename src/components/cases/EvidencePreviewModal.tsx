@@ -73,7 +73,7 @@ export const EvidencePreviewModal = ({
   const isImage = evidence.fileType.includes("image");
   
   // Get the actual file URL from the evidence
-  const fileUrl = evidence.fileUrl || "#";
+  const fileUrl = evidence.fileUrl || evidence.thumbnailUrl || "#";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

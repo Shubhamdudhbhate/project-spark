@@ -85,11 +85,27 @@ export const EvidenceCard = ({
         onClick={() => onPreview(evidence)}
         className="relative aspect-video mb-4 rounded-lg bg-secondary/30 border border-white/5 overflow-hidden cursor-pointer group/preview"
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="p-4 rounded-full bg-background/50">
-            <FileIcon className="w-8 h-8 text-muted-foreground" />
+        {evidence.fileType.includes("video") && evidence.fileUrl ? (
+          <video
+            className="absolute inset-0 w-full h-full object-cover"
+            src={evidence.fileUrl}
+            muted
+            preload="metadata"
+          />
+        ) : evidence.fileType.includes("image") && evidence.fileUrl ? (
+          <img
+            src={evidence.fileUrl}
+            alt={evidence.fileName}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="p-4 rounded-full bg-background/50">
+              <FileIcon className="w-8 h-8 text-muted-foreground" />
+            </div>
           </div>
-        </div>
+        )}
 
         {isVideo && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity">
