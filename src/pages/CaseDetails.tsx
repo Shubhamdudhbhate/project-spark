@@ -7,10 +7,10 @@ import {
   Calendar, 
   FileText, 
   Clock,
-  Folder,
   Users,
   Shield,
   Presentation as PresentationIcon,
+  Folder,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,14 @@ type DbEvidence = {
 type EvidenceWithNames = DbEvidence & {
   uploader_name?: string;
   signer_name?: string;
+};
+
+// Helper to parse party ID - handles both profile IDs and manual entries
+const parsePartyId = (id: string): { isManual: boolean; value: string } => {
+  if (id.startsWith("manual:")) {
+    return { isManual: true, value: id.replace("manual:", "") };
+  }
+  return { isManual: false, value: id };
 };
 
 const CaseDetails = () => {
@@ -139,22 +147,27 @@ const CaseDetails = () => {
       }
 
       // Build authorized personnel from case roles
-      const roleIds = [
+      // Parse plaintiff/defendant to check if they're manual entries
+      const plaintiffParsed = parsePartyId(caseResult.plaintiff_id);
+      const defendantParsed = parsePartyId(caseResult.defendant_id);
+      
+      // Only fetch profiles for actual profile IDs
+      const profileIdsToFetch = [
         caseResult.judge_id,
         caseResult.clerk_id,
-        caseResult.plaintiff_id,
-        caseResult.defendant_id,
-      ].filter(Boolean);
+        !plaintiffParsed.isManual ? plaintiffParsed.value : null,
+        !defendantParsed.isManual ? defendantParsed.value : null,
+      ].filter(Boolean) as string[];
 
       const { data: roleProfiles } = await supabase
         .from('profiles')
         .select('id, full_name, role_category')
-        .in('id', roleIds);
+        .in('id', profileIdsToFetch);
 
-      if (roleProfiles) {
+      if (roleProfiles || plaintiffParsed.isManual || defendantParsed.isManual) {
         const personnel: AuthorizedPerson[] = [];
         
-        const findProfile = (userId: string) => roleProfiles.find(p => p.id === userId);
+        const findProfile = (userId: string) => roleProfiles?.find(p => p.id === userId);
         
         const judgeProfile = findProfile(caseResult.judge_id);
         if (judgeProfile) {
@@ -180,28 +193,52 @@ const CaseDetails = () => {
           });
         }
 
-        const plaintiffProfile = findProfile(caseResult.plaintiff_id);
-        if (plaintiffProfile) {
+        // Handle plaintiff - either from profile or manual entry
+        if (plaintiffParsed.isManual) {
           personnel.push({
-            id: plaintiffProfile.id,
-            name: plaintiffProfile.full_name,
+            id: `plaintiff-manual`,
+            name: plaintiffParsed.value,
             role: 'Plaintiff',
             department: 'Party',
-            govId: plaintiffProfile.id,
+            govId: 'Manual Entry',
             addedAt: caseResult.created_at || new Date().toISOString(),
           });
+        } else {
+          const plaintiffProfile = findProfile(plaintiffParsed.value);
+          if (plaintiffProfile) {
+            personnel.push({
+              id: plaintiffProfile.id,
+              name: plaintiffProfile.full_name,
+              role: 'Plaintiff',
+              department: 'Party',
+              govId: plaintiffProfile.id,
+              addedAt: caseResult.created_at || new Date().toISOString(),
+            });
+          }
         }
 
-        const defendantProfile = findProfile(caseResult.defendant_id);
-        if (defendantProfile) {
+        // Handle defendant - either from profile or manual entry
+        if (defendantParsed.isManual) {
           personnel.push({
-            id: defendantProfile.id,
-            name: defendantProfile.full_name,
+            id: `defendant-manual`,
+            name: defendantParsed.value,
             role: 'Defendant',
             department: 'Party',
-            govId: defendantProfile.id,
+            govId: 'Manual Entry',
             addedAt: caseResult.created_at || new Date().toISOString(),
           });
+        } else {
+          const defendantProfile = findProfile(defendantParsed.value);
+          if (defendantProfile) {
+            personnel.push({
+              id: defendantProfile.id,
+              name: defendantProfile.full_name,
+              role: 'Defendant',
+              department: 'Party',
+              govId: defendantProfile.id,
+              addedAt: caseResult.created_at || new Date().toISOString(),
+            });
+          }
         }
 
         setAuthorizedPersons(personnel);
