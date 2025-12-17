@@ -31,6 +31,7 @@ export interface Evidence {
   signedBy?: string;
   signedAt?: string;
   signature?: string;
+  hearingSessionId?: string;
 }
 
 export interface CustodyEvent {

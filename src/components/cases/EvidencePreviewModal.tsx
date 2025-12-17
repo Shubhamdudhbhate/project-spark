@@ -71,9 +71,7 @@ export const EvidencePreviewModal = ({
   const isVideo = evidence.fileType.includes("video");
   const isAudio = evidence.fileType.includes("audio");
   const isImage = evidence.fileType.includes("image");
-  
-  // Get the actual file URL from the evidence
-  const fileUrl = evidence.fileUrl || evidence.thumbnailUrl || "#";
+  const isPdf = evidence.fileType.includes("pdf");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -88,20 +86,22 @@ export const EvidencePreviewModal = ({
         <div className="space-y-6">
           {/* Preview Area */}
           <div className="relative aspect-video rounded-lg bg-secondary/30 border border-white/5 overflow-hidden flex items-center justify-center">
-            {isVideo && (
+            {isVideo && evidence.fileUrl && (
               <video
                 controls
-                className="w-full h-full object-contain bg-black"
-                src={fileUrl}
+                className="w-full h-full object-contain"
+                poster={evidence.thumbnailUrl || undefined}
               >
+                <source src={evidence.fileUrl} type={evidence.fileType} />
                 Your browser does not support video playback.
               </video>
             )}
-            {isAudio && (
+            {isAudio && evidence.fileUrl && (
               <div className="p-8 w-full">
                 <div className="p-6 rounded-lg bg-background/50 flex flex-col items-center gap-4">
                   <Music className="w-16 h-16 text-primary" />
-                  <audio controls className="w-full" src={fileUrl}>
+                  <audio controls className="w-full">
+                    <source src={evidence.fileUrl} type={evidence.fileType} />
                     Your browser does not support audio playback.
                   </audio>
                 </div>
@@ -109,12 +109,19 @@ export const EvidencePreviewModal = ({
             )}
             {isImage && (
               <img
-                src={fileUrl}
+                src={evidence.fileUrl || "/placeholder.svg"}
                 alt={evidence.fileName}
                 className="w-full h-full object-contain"
               />
             )}
-            {!isVideo && !isAudio && !isImage && (
+            {isPdf && evidence.fileUrl && (
+              <iframe
+                src={evidence.fileUrl}
+                className="w-full h-full"
+                title={evidence.fileName}
+              />
+            )}
+            {!isVideo && !isAudio && !isImage && !isPdf && (
               <div className="flex flex-col items-center gap-4 p-8">
                 <div className="p-6 rounded-full bg-background/50">
                   <FileIcon className="w-16 h-16 text-muted-foreground" />

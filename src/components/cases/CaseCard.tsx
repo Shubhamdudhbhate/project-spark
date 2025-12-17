@@ -1,14 +1,7 @@
 // src/components/cases/CaseCard.tsx
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { 
-  FolderOpen, 
-  Scale, 
-  User, 
-  Calendar, 
-  FileText,
-  ChevronRight 
-} from "lucide-react";
+import { Scale, FileText, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CaseFile } from "@/types/case";
 import { cn } from "@/lib/utils";
@@ -34,71 +27,56 @@ const statusConfig = {
 
 export const CaseCard = ({ caseData }: CaseCardProps) => {
   const status = statusConfig[caseData.status as keyof typeof statusConfig] || statusConfig.open;
-  const updatedDate = new Date(caseData.updatedAt).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
+  
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="group"
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2 }}
+      className="group h-full"
     >
       <Link
         to={`/cases/${caseData.id}`}
-        className={cn(
-          "block p-6 bg-card border rounded-xl hover:border-primary/30 transition-colors",
-          "hover:shadow-md dark:hover:shadow-primary/10",
-          "h-full flex flex-col"
-        )}
+        className="block h-full glass-card p-5 hover:border-primary/30 transition-all"
       >
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-lg font-semibold line-clamp-1">
-              {caseData.title}
-            </h3>
-          </div>
+        {/* Header: Status Badge */}
+        <div className="flex justify-between items-start mb-3">
           <Badge
             variant="outline"
-            className={cn(
-              "text-xs font-medium",
-              status.className
-            )}
+            className={cn("text-xs font-medium", status.className)}
           >
             {status.label}
           </Badge>
+          <span className="text-xs font-mono text-muted-foreground">
+            {caseData.caseNumber}
+          </span>
         </div>
 
-        <div className="space-y-3 mt-2">
-          <div className="flex items-center text-sm text-muted-foreground">
-            <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span className="truncate">{caseData.caseNumber}</span>
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Scale className="h-4 w-4 mr-2 flex-shrink-0" />
+        {/* Title */}
+        <h3 className="text-base font-semibold mb-3 line-clamp-2 min-h-[2.5rem]">
+          {caseData.title}
+        </h3>
+
+        {/* Info Grid */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Scale className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="truncate">{caseData.courtName}</span>
           </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <User className="h-4 w-4 mr-2 flex-shrink-0" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileText className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="truncate">{caseData.presidingJudge}</span>
-          </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>{updatedDate}</span>
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t flex justify-between items-center">
-          <div className="text-sm text-muted-foreground">
-            {caseData.evidenceCount} evidence items
+        {/* Footer */}
+        <div className="pt-3 border-t border-white/5 flex justify-between items-center">
+          <span className="text-xs text-muted-foreground">
+            {caseData.evidenceCount} evidence
+          </span>
+          <div className="flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+            <span>View</span>
+            <ChevronRight className="h-3 w-3" />
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
         </div>
       </Link>
     </motion.div>

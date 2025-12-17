@@ -5,13 +5,13 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Navbar = () => {
-  const { isAuthenticated, logout, isLoading } = useAuth();
+  const { isAuthenticated, signOut, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleLogout = () => {
-    logout();
-    navigate('/login', { state: { from: location.pathname } });
+    signOut();
+    navigate('/', { state: { from: location.pathname } });
   };
 
   if (isLoading) {

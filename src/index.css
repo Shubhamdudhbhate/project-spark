@@ -49,6 +49,12 @@
     --saffron-glow: 25 95% 63%;
     --success: 142 76% 45%;
     --warning: 45 93% 47%;
+    
+    /* Role Colors */
+    --judge-gold: 45 93% 58%;
+    --judge-gold-glow: 45 93% 68%;
+    --clerk-blue: 217 91% 60%;
+    --observer-slate: 215 20% 65%;
 
     /* Glass effect */
     --glass-bg: 220 15% 8% / 0.6;

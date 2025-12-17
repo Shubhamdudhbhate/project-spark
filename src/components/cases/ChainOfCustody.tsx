@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface ChainOfCustodyProps {
   events: CustodyEvent[];
+  compact?: boolean;
 }
 
 const getEventIcon = (action: string) => {
@@ -30,7 +31,36 @@ const getEventColor = (action: string) => {
   return "text-muted-foreground bg-muted/10 border-muted/20";
 };
 
-export const ChainOfCustody = ({ events }: ChainOfCustodyProps) => {
+export const ChainOfCustody = ({ events, compact = false }: ChainOfCustodyProps) => {
+  if (compact) {
+    return (
+      <div className="space-y-3">
+        {events.map((event) => {
+          const Icon = getEventIcon(event.action);
+          const colorClass = getEventColor(event.action);
+          const timestamp = new Date(event.timestamp).toLocaleString("en-IN", {
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          return (
+            <div key={event.id} className="flex items-start gap-3">
+              <div className={cn("p-1.5 rounded-md border", colorClass)}>
+                <Icon className="w-3 h-3" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{event.action}</p>
+                <p className="text-xs text-muted-foreground">{timestamp}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="glass-card p-6">
       <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
