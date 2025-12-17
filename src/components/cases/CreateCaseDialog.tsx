@@ -29,8 +29,16 @@ const caseFormSchema = z.object({
   description: z.string().optional(),
   judgeId: z.string().min(1, "Judge is required"),
   clerkId: z.string().min(1, "Clerk is required"),
-  plaintiffId: z.string().min(1, "Plaintiff is required"),
-  defendantId: z.string().min(1, "Defendant is required"),
+  plaintiffId: z.string().optional(),
+  defendantId: z.string().optional(),
+  plaintiffName: z.string().optional(),
+  defendantName: z.string().optional(),
+}).refine((data) => data.plaintiffId || data.plaintiffName, {
+  message: "Plaintiff is required (select or enter manually)",
+  path: ["plaintiffId"],
+}).refine((data) => data.defendantId || data.defendantName, {
+  message: "Defendant is required (select or enter manually)",
+  path: ["defendantId"],
 });
 
 type CaseFormValues = z.infer<typeof caseFormSchema>;
@@ -64,6 +72,8 @@ export const CreateCaseDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [caseNumber, setCaseNumber] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [plaintiffMode, setPlaintiffMode] = useState<"select" | "manual">("select");
+  const [defendantMode, setDefendantMode] = useState<"select" | "manual">("select");
 
   const form = useForm<CaseFormValues>({
     resolver: zodResolver(caseFormSchema),
@@ -74,6 +84,8 @@ export const CreateCaseDialog = ({
       clerkId: "",
       plaintiffId: "",
       defendantId: "",
+      plaintiffName: "",
+      defendantName: "",
     },
     mode: "onChange",
   });
@@ -107,6 +119,21 @@ export const CreateCaseDialog = ({
   const legalProfiles = profiles.filter((p) => p.role_category === "legal_practitioner");
   const publicProfiles = profiles.filter((p) => p.role_category === "public");
 
+  const createProfileIfManual = async (name: string, roleCategory: string): Promise<string> => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .insert({
+        id: crypto.randomUUID(),
+        full_name: name.trim(),
+        role_category: roleCategory,
+      })
+      .select("id")
+      .single();
+
+    if (error) throw error;
+    return data.id;
+  };
+
   const onSubmit = async (data: CaseFormValues) => {
     try {
       setIsLoading(true);
@@ -122,6 +149,22 @@ export const CreateCaseDialog = ({
         throw new Error("Section not found");
       }
 
+      // Handle plaintiff - create profile if manual
+      let plaintiffId = data.plaintiffId;
+      if (plaintiffMode === "manual" && data.plaintiffName) {
+        plaintiffId = await createProfileIfManual(data.plaintiffName, "public");
+      }
+
+      // Handle defendant - create profile if manual
+      let defendantId = data.defendantId;
+      if (defendantMode === "manual" && data.defendantName) {
+        defendantId = await createProfileIfManual(data.defendantName, "public");
+      }
+
+      if (!plaintiffId || !defendantId) {
+        throw new Error("Plaintiff and Defendant are required");
+      }
+
       const { error } = await supabase.from("cases").insert({
         case_number: caseNumber,
         title: data.title.trim(),
@@ -129,11 +172,11 @@ export const CreateCaseDialog = ({
         status: "pending",
         filing_date: new Date().toISOString(),
         section_id: sectionId,
-        case_block_id: sectionId, // Using section_id as case_block_id
+        case_block_id: sectionId,
         judge_id: data.judgeId,
         clerk_id: data.clerkId,
-        plaintiff_id: data.plaintiffId,
-        defendant_id: data.defendantId,
+        plaintiff_id: plaintiffId,
+        defendant_id: defendantId,
       });
 
       if (error) {
@@ -274,22 +317,54 @@ export const CreateCaseDialog = ({
 
             {/* Plaintiff Selection */}
             <div className="space-y-2">
-              <Label>Plaintiff *</Label>
-              <Select
-                onValueChange={(v) => form.setValue("plaintiffId", v, { shouldValidate: true })}
-                value={form.watch("plaintiffId")}
-              >
-                <SelectTrigger className="bg-secondary/30 border-white/10">
-                  <SelectValue placeholder="Select plaintiff" />
-                </SelectTrigger>
-                <SelectContent>
-                  {publicProfiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <Label>Plaintiff *</Label>
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlaintiffMode("select");
+                      form.setValue("plaintiffName", "", { shouldValidate: true });
+                    }}
+                    className={`px-2 py-1 rounded ${plaintiffMode === "select" ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground"}`}
+                  >
+                    Select
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlaintiffMode("manual");
+                      form.setValue("plaintiffId", "", { shouldValidate: true });
+                    }}
+                    className={`px-2 py-1 rounded ${plaintiffMode === "manual" ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground"}`}
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+              {plaintiffMode === "select" ? (
+                <Select
+                  onValueChange={(v) => form.setValue("plaintiffId", v, { shouldValidate: true })}
+                  value={form.watch("plaintiffId")}
+                >
+                  <SelectTrigger className="bg-secondary/30 border-white/10">
+                    <SelectValue placeholder="Select plaintiff" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {publicProfiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  placeholder="Enter plaintiff name"
+                  className="bg-secondary/30 border-white/10"
+                  {...form.register("plaintiffName")}
+                />
+              )}
               {form.formState.errors.plaintiffId && (
                 <p className="text-sm text-destructive">
                   {form.formState.errors.plaintiffId.message}
@@ -299,22 +374,54 @@ export const CreateCaseDialog = ({
 
             {/* Defendant Selection */}
             <div className="space-y-2">
-              <Label>Defendant *</Label>
-              <Select
-                onValueChange={(v) => form.setValue("defendantId", v, { shouldValidate: true })}
-                value={form.watch("defendantId")}
-              >
-                <SelectTrigger className="bg-secondary/30 border-white/10">
-                  <SelectValue placeholder="Select defendant" />
-                </SelectTrigger>
-                <SelectContent>
-                  {publicProfiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name}
+              <div className="flex items-center justify-between">
+                <Label>Defendant *</Label>
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDefendantMode("select");
+                      form.setValue("defendantName", "", { shouldValidate: true });
+                    }}
+                    className={`px-2 py-1 rounded ${defendantMode === "select" ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground"}`}
+                  >
+                    Select
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDefendantMode("manual");
+                      form.setValue("defendantId", "", { shouldValidate: true });
+                    }}
+                    className={`px-2 py-1 rounded ${defendantMode === "manual" ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground"}`}
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+              {defendantMode === "select" ? (
+                <Select
+                  onValueChange={(v) => form.setValue("defendantId", v, { shouldValidate: true })}
+                  value={form.watch("defendantId")}
+                >
+                  <SelectTrigger className="bg-secondary/30 border-white/10">
+                    <SelectValue placeholder="Select defendant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {publicProfiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.full_name}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  placeholder="Enter defendant name"
+                  className="bg-secondary/30 border-white/10"
+                  {...form.register("defendantName")}
+                />
+              )}
               {form.formState.errors.defendantId && (
                 <p className="text-sm text-destructive">
                   {form.formState.errors.defendantId.message}
