@@ -119,47 +119,25 @@ export const CreateCaseDialog = ({
   const legalProfiles = profiles.filter((p) => p.role_category === "legal_practitioner");
   const publicProfiles = profiles.filter((p) => p.role_category === "public");
 
-  const createProfileIfManual = async (name: string, roleCategory: string): Promise<string> => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .insert({
-        id: crypto.randomUUID(),
-        full_name: name.trim(),
-        role_category: roleCategory,
-      })
-      .select("id")
-      .single();
-
-    if (error) throw error;
-    return data.id;
+  // For manual entries, we store a prefixed name string instead of trying to create profiles
+  // Format: "manual:Name Here" - this allows us to distinguish and display properly
+  const getPartyId = (mode: "select" | "manual", selectedId?: string, manualName?: string): string | null => {
+    if (mode === "select" && selectedId) {
+      return selectedId;
+    }
+    if (mode === "manual" && manualName?.trim()) {
+      return `manual:${manualName.trim()}`;
+    }
+    return null;
   };
 
   const onSubmit = async (data: CaseFormValues) => {
     try {
       setIsLoading(true);
 
-      // Get the section's case_block_id (we'll use section_id as case_block_id for now)
-      const { data: sectionData, error: sectionError } = await supabase
-        .from("sections")
-        .select("id")
-        .eq("id", sectionId)
-        .maybeSingle();
-
-      if (sectionError || !sectionData) {
-        throw new Error("Section not found");
-      }
-
-      // Handle plaintiff - create profile if manual
-      let plaintiffId = data.plaintiffId;
-      if (plaintiffMode === "manual" && data.plaintiffName) {
-        plaintiffId = await createProfileIfManual(data.plaintiffName, "public");
-      }
-
-      // Handle defendant - create profile if manual
-      let defendantId = data.defendantId;
-      if (defendantMode === "manual" && data.defendantName) {
-        defendantId = await createProfileIfManual(data.defendantName, "public");
-      }
+      // Get the plaintiff and defendant IDs/names
+      const plaintiffId = getPartyId(plaintiffMode, data.plaintiffId, data.plaintiffName);
+      const defendantId = getPartyId(defendantMode, data.defendantId, data.defendantName);
 
       if (!plaintiffId || !defendantId) {
         throw new Error("Plaintiff and Defendant are required");
