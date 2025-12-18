@@ -112,7 +112,7 @@ export const CreateCaseDialog = ({
     const { error } = await supabase.from("profiles").insert({
       id: newId,
       full_name: fullName.trim(),
-      role_category: "public",
+      role_category: "public_party",
     });
 
     if (error) throw error;
