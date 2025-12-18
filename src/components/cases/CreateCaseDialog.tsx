@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Scale, RefreshCw, Users } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,8 +30,8 @@ const caseFormSchema = z.object({
   description: z.string().optional(),
   judgeId: z.string().uuid("Select a valid judge"),
   clerkId: z.string().uuid("Select a valid clerk"),
-  plaintiffId: z.string().uuid("Select a valid plaintiff"),
-  defendantId: z.string().uuid("Select a valid defendant"),
+  plaintiffName: z.string().trim().min(2, "Plaintiff name is required"),
+  defendantName: z.string().trim().min(2, "Defendant name is required"),
 });
 
 type CaseFormValues = z.infer<typeof caseFormSchema>;
@@ -71,8 +72,8 @@ export const CreateCaseDialog = ({
       description: "",
       judgeId: "",
       clerkId: "",
-      plaintiffId: "",
-      defendantId: "",
+      plaintiffName: "",
+      defendantName: "",
     },
     mode: "onChange",
   });
@@ -104,47 +105,68 @@ export const CreateCaseDialog = ({
 
   const judiciaryProfiles = profiles.filter((p) => p.role_category === "judiciary");
   const legalProfiles = profiles.filter((p) => p.role_category === "legal_practitioner");
-  const allProfiles = profiles; // Allow any profile as party
+
+  const createPublicProfile = async (fullName: string) => {
+    const newId = uuidv4();
+
+    const { error } = await supabase.from("profiles").insert({
+      id: newId,
+      full_name: fullName.trim(),
+      role_category: "public",
+    });
+
+    if (error) throw error;
+    return newId;
+  };
 
   const onSubmit = async (data: CaseFormValues) => {
     try {
       setIsLoading(true);
 
-      // Validate all IDs exist in profiles
-      const allIds = [data.judgeId, data.clerkId, data.plaintiffId, data.defendantId];
-      const existingProfiles = profiles.filter(p => allIds.includes(p.id));
-      
-      if (existingProfiles.length !== 4) {
-        throw new Error("All personnel must be registered users. Please select from the dropdowns.");
+      // Ensure judge/clerk still exist in the fetched registry list
+      const requiredIds = [data.judgeId, data.clerkId];
+      const existing = profiles.filter((p) => requiredIds.includes(p.id));
+      if (existing.length !== 2) {
+        throw new Error("Please select Judge and Clerk from the dropdowns (registered users).");
       }
 
-      const { error } = await supabase.from("cases").insert({
-        case_number: caseNumber,
-        title: data.title.trim(),
-        description: data.description?.trim() || null,
-        status: "pending",
-        filing_date: new Date().toISOString(),
-        section_id: sectionId,
-        case_block_id: sectionId,
-        judge_id: data.judgeId,
-        clerk_id: data.clerkId,
-        plaintiff_id: data.plaintiffId,
-        defendant_id: data.defendantId,
-      });
+      // Plaintiff/Defendant are manual → create registry entries so we can store UUIDs
+      const plaintiffId = await createPublicProfile(data.plaintiffName);
+      const defendantId = await createPublicProfile(data.defendantName);
 
-      if (error) {
-        throw error;
-      }
+      const { data: createdCase, error } = await supabase
+        .from("cases")
+        .insert({
+          case_number: caseNumber,
+          title: data.title.trim(),
+          description: data.description?.trim() || null,
+          status: "pending",
+          filing_date: new Date().toISOString(),
+          section_id: sectionId,
+          case_block_id: sectionId,
+          judge_id: data.judgeId,
+          clerk_id: data.clerkId,
+          plaintiff_id: plaintiffId,
+          defendant_id: defendantId,
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw error;
 
       toast.success(`Case ${caseNumber} created successfully`);
       form.reset();
       onOpenChange(false);
       onCaseCreated();
+
+      // Optional: navigate directly into the case workspace
+      if (createdCase?.id) {
+        // Keep behavior minimal: only navigate if we got an ID back
+        // (case block list still refreshes via onCaseCreated)
+      }
     } catch (error) {
       console.error("Error creating case:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create case"
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to create case");
     } finally {
       setIsLoading(false);
     }
@@ -268,52 +290,34 @@ export const CreateCaseDialog = ({
               )}
             </div>
 
-            {/* Plaintiff Selection */}
+            {/* Plaintiff (Manual) */}
             <div className="space-y-2">
-              <Label>Plaintiff *</Label>
-              <Select
-                onValueChange={(v) => form.setValue("plaintiffId", v, { shouldValidate: true })}
-                value={form.watch("plaintiffId")}
-              >
-                <SelectTrigger className="bg-secondary/30 border-white/10">
-                  <SelectValue placeholder="Select plaintiff" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allProfiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name} {p.role_category && `(${p.role_category})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.formState.errors.plaintiffId && (
+              <Label htmlFor="plaintiffName">Plaintiff *</Label>
+              <Input
+                id="plaintiffName"
+                placeholder="Enter plaintiff name"
+                className="bg-secondary/30 border-white/10"
+                {...form.register("plaintiffName")}
+              />
+              {form.formState.errors.plaintiffName && (
                 <p className="text-sm text-destructive">
-                  {form.formState.errors.plaintiffId.message}
+                  {form.formState.errors.plaintiffName.message}
                 </p>
               )}
             </div>
 
-            {/* Defendant Selection */}
+            {/* Defendant (Manual) */}
             <div className="space-y-2">
-              <Label>Defendant *</Label>
-              <Select
-                onValueChange={(v) => form.setValue("defendantId", v, { shouldValidate: true })}
-                value={form.watch("defendantId")}
-              >
-                <SelectTrigger className="bg-secondary/30 border-white/10">
-                  <SelectValue placeholder="Select defendant" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allProfiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name} {p.role_category && `(${p.role_category})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.formState.errors.defendantId && (
+              <Label htmlFor="defendantName">Defendant *</Label>
+              <Input
+                id="defendantName"
+                placeholder="Enter defendant name"
+                className="bg-secondary/30 border-white/10"
+                {...form.register("defendantName")}
+              />
+              {form.formState.errors.defendantName && (
                 <p className="text-sm text-destructive">
-                  {form.formState.errors.defendantId.message}
+                  {form.formState.errors.defendantName.message}
                 </p>
               )}
             </div>
