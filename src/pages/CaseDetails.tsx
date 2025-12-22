@@ -28,38 +28,43 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
+// Match the actual database schema
 type DbCase = {
   id: string;
   case_number: string;
   title: string;
   description: string | null;
-  status: string | null;
-  filing_date: string | null;
-  created_at: string | null;
-  updated_at: string | null;
+  status: string;
+  priority: string | null;
+  filing_date: string;
+  next_hearing_date: string | null;
+  created_at: string;
+  updated_at: string;
+  section_id: string;
   judge_id: string;
-  clerk_id: string;
+  clerk_id: string | null;
   plaintiff_id: string;
   defendant_id: string;
-  case_block_id: string;
 };
 
+// Match the actual evidence table schema
 type DbEvidence = {
   id: string;
   case_id: string;
   title: string;
   description: string | null;
-  file_type: string | null;
+  file_name: string;
+  file_url: string;
   file_size: number | null;
-  file_url: string | null;
-  status: string | null;
+  mime_type: string | null;
+  thumbnail_url: string | null;
+  category: string;
+  is_sealed: boolean | null;
+  sealed_at: string | null;
+  sealed_by: string | null;
   uploaded_by: string;
-  created_at: string | null;
-  updated_at: string | null;
-  signed_at: string | null;
-  reviewed_by: string | null;
-  signature_hash: string | null;
-  evidence_type: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type EvidenceWithNames = DbEvidence & {
@@ -125,10 +130,10 @@ const CaseDetails = () => {
       if (evidenceError) {
         console.error('Error fetching evidence:', evidenceError);
       } else {
-        // Fetch user names for evidence
+        // Fetch user names for evidence uploaders and sealers
         const userIds = [
           ...new Set((evidenceResult || []).flatMap(e => 
-            [e.uploaded_by, e.reviewed_by].filter(Boolean) as string[]
+            [e.uploaded_by, e.sealed_by].filter(Boolean) as string[]
           ))
         ];
 
@@ -142,7 +147,7 @@ const CaseDetails = () => {
         setEvidence((evidenceResult || []).map(e => ({
           ...e,
           uploader_name: profileMap.get(e.uploaded_by) || 'Unknown',
-          signer_name: e.reviewed_by ? profileMap.get(e.reviewed_by) || 'Unknown' : undefined,
+          signer_name: e.sealed_by ? profileMap.get(e.sealed_by) || 'Unknown' : undefined,
         })));
       }
 
@@ -157,7 +162,7 @@ const CaseDetails = () => {
         caseResult.clerk_id,
         !plaintiffParsed.isManual ? plaintiffParsed.value : null,
         !defendantParsed.isManual ? defendantParsed.value : null,
-      ].filter(Boolean) as string[];
+      ].filter((id): id is string => id !== null);
 
       const { data: roleProfiles } = await supabase
         .from('profiles')
@@ -177,20 +182,22 @@ const CaseDetails = () => {
             role: 'Presiding Judge',
             department: 'Judiciary',
             govId: judgeProfile.id,
-            addedAt: caseResult.created_at || new Date().toISOString(),
+          addedAt: caseResult.created_at || new Date().toISOString(),
           });
         }
 
-        const clerkProfile = findProfile(caseResult.clerk_id);
-        if (clerkProfile) {
-          personnel.push({
-            id: clerkProfile.id,
-            name: clerkProfile.full_name,
-            role: 'Court Clerk',
-            department: 'Registry',
-            govId: clerkProfile.id,
-            addedAt: caseResult.created_at || new Date().toISOString(),
-          });
+        if (caseResult.clerk_id) {
+          const clerkProfile = findProfile(caseResult.clerk_id);
+          if (clerkProfile) {
+            personnel.push({
+              id: clerkProfile.id,
+              name: clerkProfile.full_name,
+              role: 'Court Clerk',
+              department: 'Registry',
+              govId: clerkProfile.id,
+              addedAt: caseResult.created_at || new Date().toISOString(),
+            });
+          }
         }
 
         // Handle plaintiff - either from profile or manual entry
@@ -261,14 +268,13 @@ const CaseDetails = () => {
       id: ev.id,
       caseId: id || '',
       fileName: ev.title,
-      fileType: ev.file_type || 'application/octet-stream',
+      fileType: ev.mime_type || 'application/octet-stream',
       fileSize: ev.file_size || 0,
       fileUrl: ev.file_url || undefined,
       type: 'document',
       status: 'pending',
       uploadedBy: ev.uploader_name || 'Unknown',
       uploadedAt: ev.created_at || new Date().toISOString(),
-      hash: ev.signature_hash || undefined,
     };
     setSelectedEvidence(transformed);
     setSignModalOpen(true);
@@ -278,26 +284,25 @@ const CaseDetails = () => {
     const { error } = await supabase
       .from('evidence')
       .update({
-        status: 'approved',
-        signature_hash: hash,
-        reviewed_by: user?.id,
-        signed_at: new Date().toISOString(),
+        is_sealed: true,
+        sealed_by: user?.id,
+        sealed_at: new Date().toISOString(),
       })
       .eq('id', ev.id);
 
     if (error) {
-      toast.error('Failed to sign evidence');
+      toast.error('Failed to seal evidence');
       return;
     }
 
-    // Log the seal action
+    // Log the seal action to chain_of_custody
     if (user?.id) {
-      await supabase.from('evidence_audit_log').insert([{
+      await supabase.from('chain_of_custody').insert({
         evidence_id: ev.id,
         action: 'SEALED',
         performed_by: user.id,
         details: { signature_hash: hash },
-      }]);
+      });
     }
 
     await fetchData();
@@ -309,16 +314,15 @@ const CaseDetails = () => {
       id: ev.id,
       caseId: id || '',
       fileName: ev.title,
-      fileType: ev.file_type || 'application/octet-stream',
+      fileType: ev.mime_type || 'application/octet-stream',
       fileSize: ev.file_size || 0,
       fileUrl: ev.file_url || undefined,
       type: 'document',
-      status: ev.status === 'approved' ? 'immutable' : 'pending',
+      status: ev.is_sealed ? 'immutable' : 'pending',
       uploadedBy: ev.uploader_name || 'Unknown',
       uploadedAt: ev.created_at || new Date().toISOString(),
-      hash: ev.signature_hash || undefined,
       signedBy: ev.signer_name,
-      signedAt: ev.signed_at || undefined,
+      signedAt: ev.sealed_at || undefined,
     };
     setSelectedEvidence(transformed);
     setPreviewModalOpen(true);
@@ -359,24 +363,23 @@ const CaseDetails = () => {
   };
   const status = statusConfig[caseData.status || 'pending'] || statusConfig.pending;
 
-  const approvedEvidence = evidence.filter(e => e.status === 'approved');
-  const pendingEvidence = evidence.filter(e => e.status === 'pending_review');
+  const approvedEvidence = evidence.filter(e => e.is_sealed === true);
+  const pendingEvidence = evidence.filter(e => !e.is_sealed);
 
   // Transform for presentation mode
   const presentableEvidence: LocalEvidence[] = approvedEvidence.map(e => ({
     id: e.id,
     caseId: id || '',
     fileName: e.title,
-    fileType: e.file_type || 'application/octet-stream',
+    fileType: e.mime_type || 'application/octet-stream',
     fileSize: e.file_size || 0,
     fileUrl: e.file_url || undefined,
     type: 'document',
     status: 'immutable',
     uploadedBy: e.uploader_name || 'Unknown',
     uploadedAt: e.created_at || new Date().toISOString(),
-    hash: e.signature_hash || undefined,
     signedBy: e.signer_name,
-    signedAt: e.signed_at || undefined,
+    signedAt: e.sealed_at || undefined,
   }));
 
   return (
@@ -537,18 +540,18 @@ const CaseDetails = () => {
                   evidence={evidence.map(e => ({
                     id: e.id,
                     title: e.title,
-                    file_name: e.title,
-                    file_type: e.file_type,
+                    file_name: e.file_name,
+                    file_type: e.mime_type,
                     file_size: e.file_size,
                     file_url: e.file_url,
-                    status: e.status,
+                    status: e.is_sealed ? 'sealed' : 'pending',
                     uploaded_by: e.uploaded_by,
                     uploader_name: e.uploader_name,
                     created_at: e.created_at,
-                    signed_at: e.signed_at,
+                    signed_at: e.sealed_at,
                     signer_name: e.signer_name,
-                    signature_hash: e.signature_hash,
-                    evidence_type: e.evidence_type,
+                    signature_hash: null,
+                    evidence_type: e.category,
                   }))}
                   onPreview={(ev) => {
                     const full = evidence.find(e => e.id === ev.id);

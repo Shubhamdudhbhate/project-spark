@@ -129,10 +129,13 @@ const Auth = () => {
       return;
     }
 
+    // Generate a court code from the name
+    const courtCode = newCourt.name.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 20) + '-' + Date.now().toString(36).toUpperCase();
+
     setIsCreatingCourt(true);
     const { data, error } = await supabase.from('courts').insert({
       name: newCourt.name.trim(),
-      description: newCourt.description.trim() || null,
+      code: courtCode,
       address: newCourt.address.trim() || null,
     }).select().single();
 

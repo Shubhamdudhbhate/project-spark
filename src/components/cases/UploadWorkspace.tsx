@@ -134,7 +134,7 @@ export const UploadWorkspace = ({
           .from("evidence")
           .getPublicUrl(fileName);
 
-        // Create evidence record
+        // Create evidence record - match actual database schema
         const evidenceTitle = batchTitle
           ? `${batchTitle} - ${file.name}`
           : file.name.replace(/\.[^/.]+$/, "");
@@ -142,12 +142,12 @@ export const UploadWorkspace = ({
         const { error: dbError } = await supabase.from("evidence").insert({
           case_id: caseId,
           title: evidenceTitle,
+          file_name: file.name,
           file_url: urlData.publicUrl,
-          file_type: file.type,
+          mime_type: file.type,
           file_size: file.size,
           uploaded_by: userId,
-          status: "pending_review",
-          evidence_type: category,
+          category: category === "forensic" ? "other" : category as "document" | "video" | "audio" | "image" | "other",
         });
 
         if (dbError) {
@@ -162,7 +162,7 @@ export const UploadWorkspace = ({
             .maybeSingle();
 
           if (evidenceRecord) {
-            await supabase.from("evidence_audit_log").insert({
+            await supabase.from("chain_of_custody").insert({
               evidence_id: evidenceRecord.id,
               action: "UPLOADED",
               performed_by: userId,
