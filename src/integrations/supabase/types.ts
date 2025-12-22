@@ -14,7 +14,349 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cases: {
+        Row: {
+          case_number: string
+          clerk_id: string | null
+          created_at: string
+          defendant_id: string
+          description: string | null
+          filing_date: string
+          id: string
+          judge_id: string
+          next_hearing_date: string | null
+          plaintiff_id: string
+          priority: string | null
+          section_id: string
+          status: Database["public"]["Enums"]["case_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          case_number: string
+          clerk_id?: string | null
+          created_at?: string
+          defendant_id: string
+          description?: string | null
+          filing_date?: string
+          id?: string
+          judge_id: string
+          next_hearing_date?: string | null
+          plaintiff_id: string
+          priority?: string | null
+          section_id: string
+          status?: Database["public"]["Enums"]["case_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          case_number?: string
+          clerk_id?: string | null
+          created_at?: string
+          defendant_id?: string
+          description?: string | null
+          filing_date?: string
+          id?: string
+          judge_id?: string
+          next_hearing_date?: string | null
+          plaintiff_id?: string
+          priority?: string | null
+          section_id?: string
+          status?: Database["public"]["Enums"]["case_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cases_clerk_id_fkey"
+            columns: ["clerk_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cases_defendant_id_fkey"
+            columns: ["defendant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cases_judge_id_fkey"
+            columns: ["judge_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cases_plaintiff_id_fkey"
+            columns: ["plaintiff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cases_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chain_of_custody: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          evidence_id: string
+          id: string
+          ip_address: string | null
+          performed_by: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          evidence_id: string
+          id?: string
+          ip_address?: string | null
+          performed_by: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          evidence_id?: string
+          id?: string
+          ip_address?: string | null
+          performed_by?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chain_of_custody_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chain_of_custody_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courts: {
+        Row: {
+          address: string | null
+          city: string | null
+          code: string
+          created_at: string
+          id: string
+          name: string
+          state: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          state?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          state?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      evidence: {
+        Row: {
+          case_id: string
+          category: Database["public"]["Enums"]["evidence_category"]
+          created_at: string
+          description: string | null
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          is_sealed: boolean | null
+          mime_type: string | null
+          sealed_at: string | null
+          sealed_by: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          case_id: string
+          category?: Database["public"]["Enums"]["evidence_category"]
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          is_sealed?: boolean | null
+          mime_type?: string | null
+          sealed_at?: string | null
+          sealed_by?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          case_id?: string
+          category?: Database["public"]["Enums"]["evidence_category"]
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          is_sealed?: boolean | null
+          mime_type?: string | null
+          sealed_at?: string | null
+          sealed_by?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_sealed_by_fkey"
+            columns: ["sealed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bar_council_number: string | null
+          created_at: string
+          designation: string | null
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          role_category: Database["public"]["Enums"]["role_category"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bar_council_number?: string | null
+          created_at?: string
+          designation?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          phone?: string | null
+          role_category?: Database["public"]["Enums"]["role_category"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bar_council_number?: string | null
+          created_at?: string
+          designation?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          role_category?: Database["public"]["Enums"]["role_category"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      sections: {
+        Row: {
+          code: string
+          court_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          presiding_judge_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          court_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          presiding_judge_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          court_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          presiding_judge_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sections_presiding_judge_id_fkey"
+            columns: ["presiding_judge_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +365,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      case_status:
+        | "pending"
+        | "active"
+        | "hearing"
+        | "verdict_pending"
+        | "closed"
+        | "appealed"
+      evidence_category: "document" | "video" | "audio" | "image" | "other"
+      role_category: "judiciary" | "legal_practitioner" | "public_party"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +500,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      case_status: [
+        "pending",
+        "active",
+        "hearing",
+        "verdict_pending",
+        "closed",
+        "appealed",
+      ],
+      evidence_category: ["document", "video", "audio", "image", "other"],
+      role_category: ["judiciary", "legal_practitioner", "public_party"],
+    },
   },
 } as const
