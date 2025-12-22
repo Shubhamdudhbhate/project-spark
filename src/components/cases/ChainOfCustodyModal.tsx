@@ -70,7 +70,7 @@ export const ChainOfCustodyModal = ({
     const fetchAuditLogs = async () => {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from("evidence_audit_log")
+        .from("chain_of_custody")
         .select(`
           id,
           action,

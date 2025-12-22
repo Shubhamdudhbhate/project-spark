@@ -22,7 +22,10 @@ import { toast } from 'sonner';
 type Court = {
   id: string;
   name: string;
-  description: string | null;
+  code: string;
+  type: string | null;
+  city: string | null;
+  state: string | null;
   address: string | null;
 };
 
@@ -59,10 +62,13 @@ const Courts = () => {
       return;
     }
 
+    // Generate a court code from the name
+    const courtCode = newCourt.name.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 20) + '-' + Date.now().toString(36).toUpperCase();
+
     setIsCreating(true);
     const { error } = await supabase.from('courts').insert({
       name: newCourt.name.trim(),
-      description: newCourt.description.trim() || null,
+      code: courtCode,
       address: newCourt.address.trim() || null,
     });
 
@@ -236,9 +242,9 @@ const Courts = () => {
                     {court.name}
                   </h3>
                   
-                  {court.description && (
+                  {court.type && (
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {court.description}
+                      {court.type}
                     </p>
                   )}
                   

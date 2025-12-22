@@ -58,7 +58,7 @@ const MyCases = () => {
 
   const stats = {
     total: allCases.length,
-    open: allCases.filter(c => c.status === 'open').length,
+    active: allCases.filter(c => c.status === 'active').length,
     pending: allCases.filter(c => c.status === 'pending').length,
     closed: allCases.filter(c => c.status === 'closed').length,
   };
@@ -80,7 +80,7 @@ const MyCases = () => {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Case Management</h1>
               <p className="text-muted-foreground text-sm">
-                {stats.total} total cases • {stats.open} active
+                {stats.total} total cases • {stats.active} active
               </p>
             </div>
           </div>
@@ -89,7 +89,7 @@ const MyCases = () => {
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-400">{stats.open} Open</span>
+              <span className="text-sm font-medium text-emerald-400">{stats.active} Active</span>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
               <Clock className="w-4 h-4 text-amber-400" />
@@ -137,7 +137,7 @@ const MyCases = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="closed">Closed</SelectItem>
           </SelectContent>

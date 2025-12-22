@@ -1,4 +1,9 @@
-export type CaseStatus = "open" | "closed" | "pending";
+// These match the database enums
+export type CaseStatus = "pending" | "active" | "hearing" | "verdict_pending" | "closed" | "appealed";
+export type EvidenceCategory = "document" | "video" | "audio" | "image" | "other";
+export type RoleCategory = "judiciary" | "legal_practitioner" | "public_party";
+
+// Legacy types for UI compatibility
 export type EvidenceStatus = "draft" | "pending" | "signed" | "immutable";
 export type EvidenceType = "forensic" | "cctv" | "witness" | "document" | "audio" | "other";
 

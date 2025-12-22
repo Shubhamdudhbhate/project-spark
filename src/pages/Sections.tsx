@@ -78,10 +78,14 @@ const Sections = () => {
   const handleCreateSection = async () => {
     if (!newSectionName.trim() || !courtId) return;
 
+    // Generate a section code
+    const sectionCode = newSectionName.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 15) + '-' + Date.now().toString(36).toUpperCase();
+
     setIsCreating(true);
     try {
       const { error } = await supabase.from('sections').insert({
         name: newSectionName.trim(),
+        code: sectionCode,
         description: newSectionDescription.trim() || null,
         court_id: courtId,
       });
