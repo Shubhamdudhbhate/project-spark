@@ -129,10 +129,18 @@ export const UploadWorkspace = ({
           continue;
         }
 
-        // Get public URL
-        const { data: urlData } = supabase.storage
+        // Get signed URL for private bucket (valid for 1 year)
+        const { data: urlData, error: urlError } = await supabase.storage
           .from("evidence")
-          .getPublicUrl(fileName);
+          .createSignedUrl(fileName, 60 * 60 * 24 * 365);
+
+        if (urlError || !urlData?.signedUrl) {
+          console.error("URL error:", urlError);
+          toast.error(`Failed to generate URL for ${file.name}`);
+          uploadedCount++;
+          setUploadProgress((uploadedCount / totalFiles) * 100);
+          continue;
+        }
 
         // Create evidence record - match actual database schema
         const evidenceTitle = batchTitle
@@ -143,7 +151,7 @@ export const UploadWorkspace = ({
           case_id: caseId,
           title: evidenceTitle,
           file_name: file.name,
-          file_url: urlData.publicUrl,
+          file_url: urlData.signedUrl,
           mime_type: file.type,
           file_size: file.size,
           uploaded_by: userId,
@@ -158,7 +166,7 @@ export const UploadWorkspace = ({
           const { data: evidenceRecord } = await supabase
             .from("evidence")
             .select("id")
-            .eq("file_url", urlData.publicUrl)
+            .eq("file_url", urlData.signedUrl)
             .maybeSingle();
 
           if (evidenceRecord) {

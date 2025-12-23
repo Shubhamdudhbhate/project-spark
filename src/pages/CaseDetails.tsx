@@ -544,7 +544,7 @@ const CaseDetails = () => {
                     file_type: e.mime_type,
                     file_size: e.file_size,
                     file_url: e.file_url,
-                    status: e.is_sealed ? 'sealed' : 'pending',
+                    status: e.is_sealed ? 'approved' : 'pending_review',
                     uploaded_by: e.uploaded_by,
                     uploader_name: e.uploader_name,
                     created_at: e.created_at,
@@ -570,11 +570,11 @@ const CaseDetails = () => {
               </TabsContent>
 
               {/* Upload Workspace Tab */}
-              {canUpload && id && user && (
+              {canUpload && id && profile && (
                 <TabsContent value="upload">
                   <UploadWorkspace
                     caseId={id}
-                    userId={user.id}
+                    userId={profile.id}
                     onUploadComplete={fetchData}
                   />
                 </TabsContent>
