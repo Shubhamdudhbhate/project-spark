@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      case_diary: {
+        Row: {
+          action: string
+          actor_id: string
+          case_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          case_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          case_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_diary_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_diary_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cases: {
         Row: {
           case_number: string
@@ -267,6 +315,74 @@ export type Database = {
           },
         ]
       }
+      permission_requests: {
+        Row: {
+          case_id: string
+          created_at: string
+          id: string
+          requested_at: string
+          requester_id: string
+          responded_at: string | null
+          responded_by: string | null
+          session_id: string
+          status: Database["public"]["Enums"]["permission_status"]
+          updated_at: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          id?: string
+          requested_at?: string
+          requester_id: string
+          responded_at?: string | null
+          responded_by?: string | null
+          session_id: string
+          status?: Database["public"]["Enums"]["permission_status"]
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          id?: string
+          requested_at?: string
+          requester_id?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          session_id?: string
+          status?: Database["public"]["Enums"]["permission_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permission_requests_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permission_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permission_requests_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permission_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -357,6 +473,57 @@ export type Database = {
           },
         ]
       }
+      session_logs: {
+        Row: {
+          case_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          judge_id: string
+          notes: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["session_status"]
+          updated_at: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          judge_id: string
+          notes?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          judge_id?: string
+          notes?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_logs_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_logs_judge_id_fkey"
+            columns: ["judge_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -373,7 +540,9 @@ export type Database = {
         | "closed"
         | "appealed"
       evidence_category: "document" | "video" | "audio" | "image" | "other"
+      permission_status: "pending" | "granted" | "denied" | "expired"
       role_category: "judiciary" | "legal_practitioner" | "public_party"
+      session_status: "active" | "ended" | "paused"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -510,7 +679,9 @@ export const Constants = {
         "appealed",
       ],
       evidence_category: ["document", "video", "audio", "image", "other"],
+      permission_status: ["pending", "granted", "denied", "expired"],
       role_category: ["judiciary", "legal_practitioner", "public_party"],
+      session_status: ["active", "ended", "paused"],
     },
   },
 } as const
