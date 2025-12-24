@@ -11,6 +11,7 @@ import {
   Shield,
   Presentation as PresentationIcon,
   Folder,
+  
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,11 @@ import { AuthorizedPersonnel } from "@/components/cases/AuthorizedPersonnel";
 import { UploadWorkspace } from "@/components/cases/UploadWorkspace";
 import { EvidenceVault } from "@/components/cases/EvidenceVault";
 import { PresentationMode } from "@/components/cases/PresentationMode";
+import { JudgeControlPanel } from "@/components/cases/JudgeControlPanel";
+import { JudicialNotepad } from "@/components/cases/JudicialNotepad";
+import { PermissionBanner } from "@/components/cases/PermissionBanner";
+import { CaseDiary } from "@/components/cases/CaseDiary";
+import { useCourtSession } from "@/hooks/useCourtSession";
 import { Evidence as LocalEvidence, AuthorizedPerson } from "@/types/case";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -85,6 +91,8 @@ const CaseDetails = () => {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
   
+  // Court session management
+  const courtSession = useCourtSession(id || '');
   const [caseData, setCaseData] = useState<DbCase | null>(null);
   const [evidence, setEvidence] = useState<EvidenceWithNames[]>([]);
   const [authorizedPersons, setAuthorizedPersons] = useState<AuthorizedPerson[]>([]);
@@ -506,6 +514,29 @@ const CaseDetails = () => {
               </div>
             </div>
 
+            {/* Judge Control Panel */}
+            {isJudge && (
+              <JudgeControlPanel
+                isSessionActive={courtSession.isSessionActive}
+                session={courtSession.activeSession}
+                permissionRequests={courtSession.permissionRequests}
+                onStartSession={courtSession.startSession}
+                onEndSession={courtSession.endSession}
+                onRespondPermission={courtSession.respondToPermission}
+              />
+            )}
+
+            {/* Judicial Notepad */}
+            {isJudge && courtSession.activeSession && (
+              <JudicialNotepad
+                session={courtSession.activeSession}
+                onSaveNotes={courtSession.updateNotes}
+              />
+            )}
+
+            {/* Case Diary */}
+            {id && <CaseDiary caseId={id} />}
+
             {/* Authorized Personnel */}
             <AuthorizedPersonnel personnel={authorizedPersons} />
           </motion.div>
@@ -571,12 +602,25 @@ const CaseDetails = () => {
 
               {/* Upload Workspace Tab */}
               {canUpload && id && profile && (
-                <TabsContent value="upload">
-                  <UploadWorkspace
-                    caseId={id}
-                    userId={profile.id}
-                    onUploadComplete={fetchData}
-                  />
+                <TabsContent value="upload" className="space-y-4">
+                  {/* Permission Banner for non-judges */}
+                  {!isJudge && (
+                    <PermissionBanner
+                      isSessionActive={courtSession.isSessionActive}
+                      myPermission={courtSession.myPermission}
+                      isJudge={isJudge}
+                      onRequestPermission={courtSession.requestPermission}
+                    />
+                  )}
+                  
+                  {/* Only show upload workspace if permission granted or is judge */}
+                  {(courtSession.canUpload || isJudge) && (
+                    <UploadWorkspace
+                      caseId={id}
+                      userId={profile.id}
+                      onUploadComplete={fetchData}
+                    />
+                  )}
                 </TabsContent>
               )}
 
