@@ -182,7 +182,7 @@ export const useCourtSession = (caseId: string) => {
       .eq('session_id', activeSession.id)
       .eq('status', 'pending');
 
-    // Log to case diary
+    // Log to case diary with notes
     await supabase.from('case_diary').insert({
       case_id: caseId,
       action: 'SESSION_END',
@@ -192,6 +192,7 @@ export const useCourtSession = (caseId: string) => {
         duration_minutes: Math.round(
           (Date.now() - new Date(activeSession.started_at).getTime()) / 60000
         ),
+        notes_summary: notes || activeSession.notes || null,
       },
     });
 
