@@ -6,18 +6,50 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { RoleProvider } from "@/contexts/RoleContext";
+import { Web3Provider } from "@/contexts/Web3Context";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Header } from "@/components/layout/Header";
 
 // Pages
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
 import Courts from "./pages/Courts";
 import Sections from "./pages/Sections";
 import CaseBlocks from "./pages/CaseBlocks";
 import CaseDetails from "./pages/CaseDetails";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+// Glassmorphism Layout Wrapper
+const GlassLayout = () => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
+      {/* Animated Background Grid */}
+      <div className="absolute inset-0 grid-background opacity-20" />
+      
+      {/* Gradient Orbs */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-amber-500/5 rounded-full blur-[120px] animate-pulse delay-1000" />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        <Header />
+        <main className="container mx-auto px-4 py-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
 
 // Protected Route Component
 const ProtectedRoute = forwardRef<HTMLDivElement>((_, ref) => {
@@ -31,7 +63,7 @@ const ProtectedRoute = forwardRef<HTMLDivElement>((_, ref) => {
     );
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/" replace />;
+  return isAuthenticated ? <GlassLayout /> : <Navigate to="/" replace />;
 });
 ProtectedRoute.displayName = "ProtectedRoute";
 
@@ -47,7 +79,7 @@ const PublicRoute = forwardRef<HTMLDivElement>((_, ref) => {
     );
   }
   
-  return isAuthenticated ? <Navigate to="/courts" replace /> : <Outlet />;
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Outlet />;
 });
 PublicRoute.displayName = "PublicRoute";
 
@@ -59,21 +91,17 @@ const AppRoutes = () => (
       <Route path="/auth" element={<Auth />} />
     </Route>
     
-    {/* Protected Routes - Navigation Hierarchy */}
+    {/* Protected Routes - Glassmorphism Layout */}
     <Route element={<ProtectedRoute />}>
-      {/* Level 1: Courts */}
+      <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/courts" element={<Courts />} />
-      {/* Level 2: Sections */}
       <Route path="/courts/:courtId/sections" element={<Sections />} />
-      {/* Level 3: Case Blocks */}
       <Route path="/sections/:sectionId/blocks" element={<CaseBlocks />} />
-      {/* Level 4: Case Workspace */}
       <Route path="/cases/:id" element={<CaseDetails />} />
     </Route>
     
-    {/* Legacy redirect */}
+    {/* Legacy redirects */}
     <Route path="/login" element={<Navigate to="/" replace />} />
-    <Route path="/dashboard/*" element={<Navigate to="/courts" replace />} />
     
     {/* 404 */}
     <Route path="*" element={<NotFound />} />
@@ -82,17 +110,19 @@ const AppRoutes = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <RoleProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Router>
-            <AppRoutes />
-          </Router>
-        </TooltipProvider>
-      </RoleProvider>
-    </AuthProvider>
+    <Web3Provider>
+      <AuthProvider>
+        <RoleProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Router>
+              <AppRoutes />
+            </Router>
+          </TooltipProvider>
+        </RoleProvider>
+      </AuthProvider>
+    </Web3Provider>
   </QueryClientProvider>
 );
 

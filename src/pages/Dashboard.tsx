@@ -1,31 +1,31 @@
-import { useState } from "react";
-import { Routes, Route } from "react-router-dom";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { cn } from "@/lib/utils";
-import MyCases from "./MyCases";
+import { useRole } from "@/contexts/RoleContext";
+import { JudiciaryDashboard } from "@/components/dashboard/JudiciaryDashboard";
+import { PractitionerDashboard } from "@/components/dashboard/PractitionerDashboard";
+import { PublicDashboard } from "@/components/dashboard/PublicDashboard";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const Dashboard = () => {
-  const [sidebarCollapsed] = useState(false);
+  const { currentUser } = useRole();
 
-  return (
-    <div className="min-h-screen bg-background grid-background">
-      <Sidebar collapsed={sidebarCollapsed} />
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <LoadingSpinner size={48} />
+      </div>
+    );
+  }
 
-      <main
-        className={cn(
-          "transition-all duration-300 p-6 lg:p-8",
-          sidebarCollapsed ? "ml-20" : "ml-64"
-        )}
-      >
-        <Routes>
-          <Route index element={<MyCases />} />
-          <Route path="upload" element={<MyCases />} />
-          <Route path="logs" element={<MyCases />} />
-          <Route path="settings" element={<MyCases />} />
-        </Routes>
-      </main>
-    </div>
-  );
+  // Role-based dashboard switching
+  switch (currentUser.role) {
+    case "judge":
+      return <JudiciaryDashboard />;
+    case "clerk":
+      return <PractitionerDashboard />;
+    case "observer":
+      return <PublicDashboard />;
+    default:
+      return <PublicDashboard />;
+  }
 };
 
 export default Dashboard;
