@@ -89,7 +89,7 @@ const parsePartyId = (id: string): { isManual: boolean; value: string } => {
 const CaseDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   
   // Court session management
   const courtSession = useCourtSession(id || '');
@@ -289,29 +289,33 @@ const CaseDetails = () => {
   };
 
   const handleSignComplete = async (ev: LocalEvidence, hash: string) => {
+    if (!profile?.id) {
+      toast.error('You must be logged in to seal evidence');
+      return;
+    }
+
     const { error } = await supabase
       .from('evidence')
       .update({
         is_sealed: true,
-        sealed_by: user?.id,
+        sealed_by: profile.id,
         sealed_at: new Date().toISOString(),
       })
       .eq('id', ev.id);
 
     if (error) {
+      console.error('Error sealing evidence:', error);
       toast.error('Failed to seal evidence');
       return;
     }
 
     // Log the seal action to chain_of_custody
-    if (user?.id) {
-      await supabase.from('chain_of_custody').insert({
-        evidence_id: ev.id,
-        action: 'SEALED',
-        performed_by: user.id,
-        details: { signature_hash: hash },
-      });
-    }
+    await supabase.from('chain_of_custody').insert({
+      evidence_id: ev.id,
+      action: 'SEALED',
+      performed_by: profile.id,
+      details: { signature_hash: hash },
+    });
 
     await fetchData();
     toast.success('Evidence sealed with judicial signature');
