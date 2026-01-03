@@ -7,6 +7,8 @@ import {
   History,
   ChevronRight,
   Circle,
+  StickyNote,
+  Clock,
 } from "lucide-react";
 import {
   Accordion,
@@ -15,6 +17,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -25,6 +28,15 @@ interface DiaryEntry {
   actor_name?: string;
   details: unknown;
   created_at: string;
+}
+
+interface SessionNote {
+  id: string;
+  notes: string | null;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  judge_name?: string;
 }
 
 interface Party {
@@ -62,8 +74,76 @@ export const DocketSidebar = ({
   parties,
 }: DocketSidebarProps) => {
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
+  const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(true);
 
+  // Fetch session notes
+  useEffect(() => {
+    const fetchSessionNotes = async () => {
+      setIsLoadingNotes(true);
+
+      const { data, error } = await supabase
+        .from("session_logs")
+        .select("id, notes, started_at, ended_at, status, judge_id")
+        .eq("case_id", caseId)
+        .order("started_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching session notes:", error);
+        setIsLoadingNotes(false);
+        return;
+      }
+
+      // Fetch judge names
+      const judgeIds = [...new Set((data || []).map((s) => s.judge_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", judgeIds);
+
+      const profileMap = new Map(
+        profiles?.map((p) => [p.id, p.full_name]) || []
+      );
+
+      setSessionNotes(
+        (data || []).map((s) => ({
+          id: s.id,
+          notes: s.notes,
+          started_at: s.started_at,
+          ended_at: s.ended_at,
+          status: s.status,
+          judge_name: profileMap.get(s.judge_id) || "Unknown Judge",
+        }))
+      );
+      setIsLoadingNotes(false);
+    };
+
+    fetchSessionNotes();
+
+    // Subscribe to realtime updates for session notes
+    const channel = supabase
+      .channel(`session-notes-${caseId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "session_logs",
+          filter: `case_id=eq.${caseId}`,
+        },
+        () => {
+          fetchSessionNotes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [caseId]);
+
+  // Fetch diary entries
   useEffect(() => {
     const fetchDiary = async () => {
       setIsLoading(true);
@@ -145,6 +225,9 @@ export const DocketSidebar = ({
   };
 
   const currentStatus = statusConfig[status] || statusConfig.pending;
+
+  // Filter sessions that have notes
+  const sessionsWithNotes = sessionNotes.filter((s) => s.notes && s.notes.trim() !== "");
 
   return (
     <div className="h-full border-l border-border bg-card">
@@ -235,6 +318,83 @@ export const DocketSidebar = ({
                 </p>
               )}
             </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Session Notes Section */}
+        <AccordionItem value="notes" className="border-b border-border">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-secondary/50">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <StickyNote className="w-4 h-4 text-muted-foreground" />
+              Session Notes
+              {sessionsWithNotes.length > 0 && (
+                <Badge variant="outline" className="ml-auto text-xs">
+                  {sessionsWithNotes.length}
+                </Badge>
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            {isLoadingNotes ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : sessionsWithNotes.length > 0 ? (
+              <ScrollArea className="max-h-[300px]">
+                <div className="space-y-3">
+                  {sessionsWithNotes.map((session) => (
+                    <div
+                      key={session.id}
+                      className="p-3 rounded-lg bg-secondary/30 border border-border"
+                    >
+                      {/* Session Header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs font-medium">
+                            {format(new Date(session.started_at), "MMM dd, yyyy")}
+                          </span>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs",
+                            session.status === "active"
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                              : "bg-muted text-muted-foreground border-border"
+                          )}
+                        >
+                          {session.status === "active" ? "Live" : "Ended"}
+                        </Badge>
+                      </div>
+
+                      {/* Session Time */}
+                      <div className="text-xs text-muted-foreground mb-2">
+                        {format(new Date(session.started_at), "h:mm a")}
+                        {session.ended_at && (
+                          <> — {format(new Date(session.ended_at), "h:mm a")}</>
+                        )}
+                        <span className="ml-2 text-muted-foreground/60">
+                          by {session.judge_name}
+                        </span>
+                      </div>
+
+                      {/* Notes Content */}
+                      <div className="text-sm text-foreground whitespace-pre-wrap bg-background/50 rounded p-2 border border-border/50">
+                        {session.notes}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-6">
+                <StickyNote className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
+                <p className="text-xs text-muted-foreground">
+                  No session notes recorded yet
+                </p>
+              </div>
+            )}
           </AccordionContent>
         </AccordionItem>
 
