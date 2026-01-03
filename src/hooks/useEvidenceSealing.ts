@@ -26,10 +26,10 @@ const generateSealMessage = (fileHash: string, caseId: string): string => {
 
 // Record seal on blockchain (placeholder - implement your smart contract)
 const recordSealOnBlockchain = async (
-  fileHash: string,
-  signature: string,
-  caseId: string,
-  evidenceId: string
+  _fileHash: string,
+  _signature: string,
+  _caseId: string,
+  _evidenceId: string
 ): Promise<string> => {
   // This is a placeholder - implement your smart contract interaction here
   // Example using wagmi/viem:

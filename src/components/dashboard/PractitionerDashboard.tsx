@@ -4,12 +4,9 @@ import { motion } from "framer-motion";
 import {
   Scale,
   Upload,
-  Clock,
   FileText,
   Calendar,
-  CheckCircle2,
   Loader2,
-  AlertCircle,
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { format, isAfter, addDays } from "date-fns";
+import { format, addDays } from "date-fns";
 
 type Case = {
   id: string;
@@ -45,7 +42,7 @@ export const PractitionerDashboard = () => {
   const { roleTheme } = useRole();
   const [cases, setCases] = useState<Case[]>([]);
   const [upcomingHearings, setUpcomingHearings] = useState<Case[]>([]);
-  const [uploadTrackers, setUploadTrackers] = useState<UploadStatus[]>([]);
+  const [uploadTrackers] = useState<UploadStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

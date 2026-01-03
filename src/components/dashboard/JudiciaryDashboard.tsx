@@ -3,24 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Gavel,
-  Clock,
   FileText,
-  Users,
   AlertCircle,
   CheckCircle2,
   Play,
-  Pause,
   Timer,
   ArrowRight,
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GlassCard } from "@/components/layout/GlassWrapper";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
-import { useCourtSession } from "@/hooks/useCourtSession";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
