@@ -27,9 +27,9 @@ interface UploadResult {
 
 // Record hash on blockchain (placeholder - you'll need to implement your smart contract)
 const recordOnBlockchain = async (
-  fileHash: string,
-  cid: string,
-  caseId: string
+  _fileHash: string,
+  _cid: string,
+  _caseId: string
 ): Promise<string> => {
   // This is a placeholder - implement your smart contract interaction here
   // Example using wagmi/viem:
@@ -64,7 +64,6 @@ export const useSecureUpload = () => {
       }
     ): Promise<UploadResult> => {
       setIsUploading(true);
-      const progressId = `${file.name}-${Date.now()}`;
 
       try {
         // Step 1: Generate hash
@@ -126,16 +125,9 @@ export const useSecureUpload = () => {
             file_url: ipfsUrl,
             file_size: file.size,
             mime_type: file.type,
-            category: metadata.category,
+            category: metadata.category as "document" | "video" | "audio" | "image" | "other",
             uploaded_by: userId,
             is_sealed: false,
-            // Store blockchain data in metadata
-            metadata: {
-              file_hash: fileHash,
-              ipfs_cid: cid,
-              ipfs_url: ipfsUrl,
-              blockchain_tx: txHash,
-            },
           })
           .select()
           .single();
