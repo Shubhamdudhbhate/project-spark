@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Folder, Scale, FileText, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Folder, Scale, FileText, ChevronRight, Gavel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +29,11 @@ type Case = {
   status: string | null;
   filing_date: string | null;
   created_at: string | null;
+  judge_id: string;
+  judge?: {
+    id: string;
+    full_name: string;
+  } | null;
 };
 
 const CaseBlocks = () => {
@@ -69,10 +74,16 @@ const CaseBlocks = () => {
 
         setSection(sectionData as Section);
 
-        // Fetch cases in this section
+        // Fetch cases in this section with judge information
         const { data: casesData, error: casesError } = await supabase
           .from('cases')
-          .select('*')
+          .select(`
+            *,
+            judge:profiles!cases_judge_id_fkey(
+              id,
+              full_name
+            )
+          `)
           .eq('section_id', sectionId)
           .order('created_at', { ascending: false });
 
@@ -81,7 +92,13 @@ const CaseBlocks = () => {
           return;
         }
 
-        setCases(casesData || []);
+        // Transform the data to match our Case type
+        const transformedCases = (casesData || []).map((caseItem: any) => ({
+          ...caseItem,
+          judge: caseItem.judge || null,
+        }));
+
+        setCases(transformedCases);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -114,11 +131,22 @@ const CaseBlocks = () => {
     
     const { data } = await supabase
       .from('cases')
-      .select('*')
+      .select(`
+        *,
+        judge:profiles!cases_judge_id_fkey(
+          id,
+          full_name
+        )
+      `)
       .eq('section_id', sectionId)
       .order('created_at', { ascending: false });
 
-    setCases(data || []);
+    const transformedCases = (data || []).map((caseItem: any) => ({
+      ...caseItem,
+      judge: caseItem.judge || null,
+    }));
+
+    setCases(transformedCases);
   };
 
   if (isLoading) {
@@ -217,8 +245,18 @@ const CaseBlocks = () => {
                   </p>
                 )}
 
-                <div className="text-xs text-muted-foreground">
-                  Filed: {caseItem.filing_date ? new Date(caseItem.filing_date).toLocaleDateString('en-IN') : 'N/A'}
+                <div className="space-y-2">
+                  {caseItem.judge && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Gavel className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="truncate">
+                        Judge: <span className="font-medium text-foreground">{caseItem.judge.full_name}</span>
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-xs text-muted-foreground">
+                    Filed: {caseItem.filing_date ? new Date(caseItem.filing_date).toLocaleDateString('en-IN') : 'N/A'}
+                  </div>
                 </div>
               </motion.div>
             ))}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Shield, Lock } from "lucide-react";
+import { ArrowLeft, Play, Shield, Lock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,7 @@ import { JudgeControlPanel } from "@/components/cases/JudgeControlPanel";
 import { JudicialNotepad } from "@/components/cases/JudicialNotepad";
 import { PermissionBanner } from "@/components/cases/PermissionBanner";
 import { DocketSidebar } from "@/components/cases/DocketSidebar";
+import { JudgeSessionCaseManager } from "@/components/dashboard/JudgeSessionCaseManager";
 import { useCourtSession } from "@/hooks/useCourtSession";
 import { Evidence as LocalEvidence, AuthorizedPerson } from "@/types/case";
 import { cn } from "@/lib/utils";
@@ -475,6 +476,12 @@ const CaseDetails = () => {
                     Upload
                   </TabsTrigger>
                 )}
+                {isJudge && (
+                  <TabsTrigger value="session" className="data-[state=active]:bg-secondary">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Session Manager
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               {presentableEvidence.length > 0 && (
@@ -580,6 +587,23 @@ const CaseDetails = () => {
                     onUploadComplete={fetchData}
                   />
                 )}
+              </TabsContent>
+            )}
+
+            {isJudge && caseData && profile && (
+              <TabsContent value="session" className="mt-0">
+                <JudgeSessionCaseManager
+                  caseId={caseData.id}
+                  caseName={caseData.title}
+                  caseNumber={caseData.case_number}
+                  currentJudgeId={profile.id}
+                  onCaseTransferred={() => {
+                    toast.success("Case transferred. Redirecting...");
+                    setTimeout(() => {
+                      navigate("/dashboard");
+                    }, 2000);
+                  }}
+                />
               </TabsContent>
             )}
           </Tabs>
