@@ -6,8 +6,6 @@ import {
   FileText,
   CheckCircle2,
   Clock,
-  AlertCircle,
-  ArrowRight,
   Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
