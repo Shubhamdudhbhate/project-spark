@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { JudgeDashboardCasesList } from "./JudgeDashboardCasesList";
 
 type Case = {
   id: string;
@@ -330,72 +331,8 @@ export const JudiciaryDashboard = () => {
           )}
         </GlassCard>
 
-        {/* My Cases */}
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className={cn("w-5 h-5", `text-${roleTheme.primary}`)} />
-              My Cases
-            </h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/courts")}
-            >
-              View All
-            </Button>
-          </div>
-
-          {cases.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground mb-3">
-                No cases assigned yet
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/courts")}
-              >
-                Browse Courts
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {cases.slice(0, 5).map((caseItem) => (
-                <motion.button
-                  key={caseItem.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  onClick={() => navigate(`/cases/${caseItem.id}`)}
-                  className="w-full p-3 rounded-lg bg-secondary/30 border border-white/5 hover:border-white/10 transition-all text-left group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm group-hover:text-primary transition-colors">
-                        {caseItem.title}
-                      </p>
-                      <p className="text-xs font-mono text-muted-foreground mt-1">
-                        {caseItem.case_number}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs",
-                        caseItem.status === "active"
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                          : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                      )}
-                    >
-                      {caseItem.status}
-                    </Badge>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          )}
-        </GlassCard>
+        {/* Assigned Cases with Scheduling */}
+        <JudgeDashboardCasesList cases={cases} onRefresh={fetchData} />
       </div>
 
       {/* Stats Grid */}
