@@ -3,15 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-"scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "build:dev": "vite build --mode development",
-  "lint": "eslint .",
-  "preview": "vite preview",
-  "predeploy": "npm run build"
-},
-
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "predeploy": "npm run build"
+  },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@loadable/component": "^5.16.7",
@@ -44,6 +43,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@supabase/supabase-js": "^2.89.0",
     "@tanstack/react-query": "^5.83.0",
+    "@types/lodash": "^4.17.21",
     "@types/react-dropzone": "^4.2.2",
     "@types/uuid": "^10.0.0",
     "class-variance-authority": "^0.7.1",
@@ -53,6 +53,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.26",
     "input-otp": "^1.4.2",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.462.0",
     "next": "^16.0.10",
     "next-themes": "^0.3.0",
@@ -94,5 +95,4 @@
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19"
   }
-  
 }
