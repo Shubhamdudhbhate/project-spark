@@ -8,9 +8,7 @@ import {
   CheckCircle2,
   XCircle,
   History,
-  AlertCircle,
   Upload,
-  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";

@@ -1,386 +1,231 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import {
-  Gavel,
-  FileText,
-  AlertCircle,
-  CheckCircle2,
-  Play,
-  Timer,
-  ArrowRight,
-  Shield,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { GlassCard } from "@/components/layout/GlassWrapper";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRole } from "@/contexts/RoleContext";
-import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
-import { JudgeDashboardCasesList } from "./JudgeDashboardCasesList";
+import { NyaySutraSidebar } from "./NyaySutraSidebar";
+import { DashboardHeader } from "./DashboardHeader";
+import { VitalStatsCards } from "./VitalStatsCards";
+import { LiveCauseList, CauseListItem } from "./LiveCauseList";
+import { JudgmentQueue, JudgmentItem } from "./JudgmentQueue";
+import { QuickJudicialNotes } from "./QuickJudicialNotes";
+import { useAuth } from "@/contexts/AuthContext";
 
-type Case = {
-  id: string;
-  case_number: string;
-  title: string;
-  status: string;
-  filing_date: string;
-  next_hearing_date: string | null;
-};
+// Mock data for demonstration
+const mockCauseList: CauseListItem[] = [
+  {
+    id: "1",
+    srNo: 1,
+    caseNumber: "WP/1024/2025",
+    parties: "State of Maharashtra vs. Sharma Industries Pvt. Ltd.",
+    caseType: "Writ Petition",
+    stage: "Arguments",
+    status: "scheduled",
+    time: "10:30 AM",
+  },
+  {
+    id: "2",
+    srNo: 2,
+    caseNumber: "BA/0542/2025",
+    parties: "Rajesh Kumar vs. State of Gujarat",
+    caseType: "Bail Application",
+    stage: "Hearing",
+    status: "scheduled",
+    isUrgent: true,
+    time: "11:00 AM",
+  },
+  {
+    id: "3",
+    srNo: 3,
+    caseNumber: "CS/2187/2024",
+    parties: "Aarav Tech Solutions vs. Nexus Innovations",
+    caseType: "Civil Suit",
+    stage: "Evidence",
+    status: "scheduled",
+    time: "11:30 AM",
+  },
+  {
+    id: "4",
+    srNo: 4,
+    caseNumber: "CRL/0891/2025",
+    parties: "State vs. Mehta & Associates",
+    caseType: "Criminal Appeal",
+    stage: "Final Arguments",
+    status: "scheduled",
+    time: "12:00 PM",
+  },
+  {
+    id: "5",
+    srNo: 5,
+    caseNumber: "WP/2045/2024",
+    parties: "Environmental Action Forum vs. Union of India",
+    caseType: "PIL",
+    stage: "Directions",
+    status: "scheduled",
+    isUrgent: true,
+    time: "02:00 PM",
+  },
+  {
+    id: "6",
+    srNo: 6,
+    caseNumber: "MA/0123/2025",
+    parties: "Priya Enterprises vs. State Bank of India",
+    caseType: "Misc. Application",
+    stage: "Consideration",
+    status: "scheduled",
+    time: "02:30 PM",
+  },
+];
 
-type PermissionRequest = {
-  id: string;
-  case_id: string;
-  requester_id: string;
-  requester_name: string;
-  requested_at: string;
-  case_title: string;
-  case_number: string;
-};
+const mockJudgmentQueue: JudgmentItem[] = [
+  {
+    id: "j1",
+    caseNumber: "WP/0789/2024",
+    parties: "Sunrise Pharma vs. DPCO",
+    hearingDate: "Dec 28, 2024",
+    draftProgress: 75,
+    dueDate: "Jan 15, 2025",
+  },
+  {
+    id: "j2",
+    caseNumber: "CS/1567/2024",
+    parties: "Metro Builders vs. NHAI",
+    hearingDate: "Dec 20, 2024",
+    draftProgress: 40,
+    dueDate: "Jan 10, 2025",
+    isOverdue: true,
+  },
+  {
+    id: "j3",
+    caseNumber: "CRL/0234/2024",
+    parties: "State vs. Ramesh Gupta",
+    hearingDate: "Jan 02, 2025",
+    draftProgress: 15,
+    dueDate: "Jan 20, 2025",
+  },
+  {
+    id: "j4",
+    caseNumber: "WP/1890/2024",
+    parties: "Teachers Association vs. State",
+    hearingDate: "Dec 15, 2024",
+    draftProgress: 90,
+    dueDate: "Jan 05, 2025",
+  },
+];
 
 export const JudiciaryDashboard = () => {
-  const navigate = useNavigate();
   const { profile } = useAuth();
-  const { roleTheme } = useRole();
-  const [cases, setCases] = useState<Case[]>([]);
-  const [permissionRequests, setPermissionRequests] = useState<PermissionRequest[]>([]);
-  const [activeSessions, setActiveSessions] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  const [currentHearingId, setCurrentHearingId] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
 
-  useEffect(() => {
-    if (profile?.id) {
-      fetchData();
-    }
-  }, [profile?.id]);
+  const judgeName = profile?.full_name || "Shubham Patel";
 
-  const fetchData = async () => {
-    if (!profile?.id) return;
+  const currentCase = mockCauseList.find((c) => c.id === currentHearingId);
 
-    try {
-      // Fetch cases where user is judge
-      const { data: casesData } = await supabase
-        .from("cases")
-        .select("*")
-        .eq("judge_id", profile.id)
-        .order("created_at", { ascending: false })
-        .limit(10);
+  const handleStartHearing = useCallback((id: string) => {
+    setCurrentHearingId(id);
+    const caseItem = mockCauseList.find((c) => c.id === id);
+    toast.success(`Hearing started for ${caseItem?.caseNumber}`, {
+      description: caseItem?.parties,
+    });
+  }, []);
 
-      setCases(casesData || []);
+  const handleOpenCaseFile = useCallback((id: string) => {
+    navigate(`/cases/${id}`);
+  }, [navigate]);
 
-      // Fetch active sessions
-      const { data: sessionsData } = await supabase
-        .from("session_logs")
-        .select("*, cases(title, case_number)")
-        .eq("judge_id", profile.id)
-        .eq("status", "active")
-        .order("started_at", { ascending: false });
+  const handleVideoCall = useCallback(() => {
+    toast.info("Initiating video conference...", {
+      description: "Connecting to virtual courtroom",
+    });
+  }, []);
 
-      setActiveSessions(sessionsData || []);
+  const handlePassOrder = useCallback((id: string) => {
+    const caseItem = mockCauseList.find((c) => c.id === id);
+    toast.success(`Order passed for ${caseItem?.caseNumber}`);
+    setCurrentHearingId(null);
+    setNotes("");
+  }, []);
 
-      // Fetch pending permission requests
-      const { data: permissionsData } = await supabase
-        .from("permission_requests")
-        .select(
-          `
-          *,
-          cases(title, case_number),
-          profiles!permission_requests_requester_id_fkey(full_name)
-        `
-        )
-        .eq("status", "pending")
-        .order("requested_at", { ascending: false });
+  const handleOpenJudgment = useCallback((id: string) => {
+    navigate(`/judgment/${id}`);
+  }, [navigate]);
 
-      const formattedPermissions: PermissionRequest[] =
-        permissionsData?.map((p: any) => ({
-          id: p.id,
-          case_id: p.case_id,
-          requester_id: p.requester_id,
-          requester_name: p.profiles?.full_name || "Unknown",
-          requested_at: p.requested_at,
-          case_title: p.cases?.title || "Unknown Case",
-          case_number: p.cases?.case_number || "N/A",
-        })) || [];
-
-      setPermissionRequests(formattedPermissions);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGrantPermission = async (requestId: string) => {
-    if (!profile?.id) return;
-
-    const { error } = await supabase
-      .from("permission_requests")
-      .update({
-        status: "granted",
-        responded_at: new Date().toISOString(),
-        responded_by: profile.id,
-      })
-      .eq("id", requestId);
-
-    if (error) {
-      toast.error("Failed to grant permission");
-    } else {
-      toast.success("Permission granted");
-      fetchData();
-    }
-  };
-
-  const handleDenyPermission = async (requestId: string) => {
-    if (!profile?.id) return;
-
-    const { error } = await supabase
-      .from("permission_requests")
-      .update({
-        status: "denied",
-        responded_at: new Date().toISOString(),
-        responded_by: profile.id,
-      })
-      .eq("id", requestId);
-
-    if (error) {
-      toast.error("Failed to deny permission");
-    } else {
-      toast.success("Permission denied");
-      fetchData();
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading your bench...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const activeSession = activeSessions[0];
+  const handleSaveNotes = useCallback((newNotes: string) => {
+    setNotes(newNotes);
+    // In production, this would save to database
+  }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <Gavel className={cn("w-8 h-8", `text-${roleTheme.primary}`)} />
-            Judiciary Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your cases and court sessions
-          </p>
-        </div>
-      </motion.div>
+    <div className="min-h-screen bg-background flex">
+      <NyaySutraSidebar />
 
-      {/* Live Bench - Active Session Card */}
-      {activeSession && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative"
-        >
-          <GlassCard
-            className={cn(
-              "p-6 border-2",
-              `border-${roleTheme.border}`,
-              "relative overflow-hidden"
-            )}
-          >
-            {/* Pulsing glow effect */}
-            <div
-              className={cn(
-                "absolute inset-0 rounded-2xl opacity-20 animate-pulse",
-                `bg-${roleTheme.glow}`
-              )}
+      <main className="flex-1 ml-64 transition-all duration-300">
+        <DashboardHeader
+          judgeName={judgeName}
+          designation="Honorable Justice"
+          notificationCount={5}
+        />
+
+        <div className="p-6 space-y-6">
+          {/* Vital Stats */}
+          <section>
+            <VitalStatsCards
+              casesListedToday={24}
+              urgentApplications={5}
+              judgmentsReserved={8}
+              monthlyDisposalRate="+12%"
             />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={cn(
-                      "w-3 h-3 rounded-full animate-pulse",
-                      `bg-${roleTheme.primary}`
-                    )}
-                  />
-                  <h2 className="text-xl font-bold text-foreground">
-                    Live Bench Session
-                  </h2>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "border",
-                    `border-${roleTheme.border}`,
-                    `bg-${roleTheme.badge}`
-                  )}
-                >
-                  <Timer className="w-3 h-3 mr-1" />
-                  {formatDistanceToNow(new Date(activeSession.started_at), {
-                    addSuffix: false,
-                  })}
-                </Badge>
-              </div>
+          </section>
 
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Case</p>
-                  <p className="font-semibold">
-                    {activeSession.cases?.title || "Unknown Case"}
-                  </p>
-                  <p className="text-xs font-mono text-muted-foreground">
-                    {activeSession.cases?.case_number || "N/A"}
-                  </p>
-                </div>
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Cause List - 60% */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="lg:col-span-3"
+            >
+              <LiveCauseList
+                items={mockCauseList}
+                currentHearingId={currentHearingId}
+                onStartHearing={handleStartHearing}
+                onOpenCaseFile={handleOpenCaseFile}
+                onVideoCall={handleVideoCall}
+                onPassOrder={handlePassOrder}
+              />
+            </motion.div>
 
-                <Button
-                  onClick={() => navigate(`/cases/${activeSession.case_id}`)}
-                  className={cn(
-                    "w-full",
-                    `bg-${roleTheme.primary} hover:opacity-90`
-                  )}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Resume Session
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
+            {/* Right Column - 40% */}
+            <div className="lg:col-span-2 space-y-6">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <JudgmentQueue
+                  items={mockJudgmentQueue}
+                  onOpenJudgment={handleOpenJudgment}
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <QuickJudicialNotes
+                  currentHearingId={currentHearingId}
+                  currentCaseNumber={currentCase?.caseNumber}
+                  initialNotes={notes}
+                  onSaveNotes={handleSaveNotes}
+                />
+              </motion.div>
             </div>
-          </GlassCard>
-        </motion.div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Permission Inbox */}
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <AlertCircle className={cn("w-5 h-5", `text-${roleTheme.primary}`)} />
-              Permission Inbox
-            </h3>
-            {permissionRequests.length > 0 && (
-              <Badge variant="outline">{permissionRequests.length}</Badge>
-            )}
           </div>
-
-          {permissionRequests.length === 0 ? (
-            <div className="text-center py-8">
-              <CheckCircle2 className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">
-                No pending permission requests
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {permissionRequests.map((request) => (
-                <motion.div
-                  key={request.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="p-4 rounded-lg bg-secondary/30 border border-white/5"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{request.requester_name}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {request.case_title}
-                      </p>
-                      <p className="text-xs font-mono text-muted-foreground">
-                        {request.case_number}
-                      </p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(request.requested_at), {
-                        addSuffix: true,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleGrantPermission(request.id)}
-                      className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30"
-                    >
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      Grant
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDenyPermission(request.id)}
-                      className="flex-1"
-                    >
-                      Deny
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </GlassCard>
-
-        {/* Assigned Cases with Scheduling */}
-        <JudgeDashboardCasesList cases={cases} onRefresh={fetchData} />
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Cases</p>
-              <p className="text-2xl font-bold">{cases.length}</p>
-            </div>
-            <FileText className={cn("w-8 h-8", `text-${roleTheme.primary}/30`)} />
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Active Sessions</p>
-              <p className="text-2xl font-bold">{activeSessions.length}</p>
-            </div>
-            <Play className={cn("w-8 h-8", `text-${roleTheme.primary}/30`)} />
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Pending Requests</p>
-              <p className="text-2xl font-bold">{permissionRequests.length}</p>
-            </div>
-            <AlertCircle className={cn("w-8 h-8", `text-${roleTheme.primary}/30`)} />
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Authority Level</p>
-              <p className="text-2xl font-bold flex items-center gap-1">
-                <Shield className={cn("w-5 h-5", `text-${roleTheme.primary}`)} />
-                Judge
-              </p>
-            </div>
-            <Gavel className={cn("w-8 h-8", `text-${roleTheme.primary}/30`)} />
-          </div>
-        </GlassCard>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
-

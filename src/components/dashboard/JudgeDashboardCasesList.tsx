@@ -9,7 +9,6 @@ import { GlassCard } from "@/components/layout/GlassWrapper";
 import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import { ScheduleHearingModal } from "./ScheduleHearingModal";
 
 type Case = {
@@ -43,7 +42,7 @@ export function JudgeDashboardCasesList({
   const handleSchedule = async (
     caseId: string,
     date: Date,
-    time: string
+    _time: string
   ) => {
     try {
       const { error } = await supabase

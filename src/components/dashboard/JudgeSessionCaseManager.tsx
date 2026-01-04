@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarIcon,
   Clock,
-  FileText,
   UserPlus,
   CheckCircle2,
   XCircle,
@@ -11,7 +10,6 @@ import {
   AlertCircle,
   Upload,
   Users,
-  ArrowRight,
   Gavel,
   LogOut,
 } from "lucide-react";
@@ -109,7 +107,7 @@ interface JudgeSessionCaseManagerProps {
 // INITIAL STATE WITH COMPREHENSIVE MOCK DATA
 // ============================================================================
 
-const generateMockData = (caseId: string, caseName: string, currentJudgeId: string) => {
+const generateMockData = (_caseId: string, _caseName: string, currentJudgeId: string) => {
   return {
     // Hearing Status
     hearingStatus: "scheduled" as HearingStatus,
@@ -230,7 +228,7 @@ export function JudgeSessionCaseManager({
   onCaseTransferred,
 }: JudgeSessionCaseManagerProps) {
   const { roleTheme } = useRole();
-  const { profile } = useAuth();
+  useAuth(); // Hook needed for auth context
   const [state, setState] = useState(() =>
     generateMockData(caseId, caseName, currentJudgeId)
   );

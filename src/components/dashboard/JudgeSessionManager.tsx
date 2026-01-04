@@ -4,13 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarIcon,
   Clock,
-  FileText,
   UserPlus,
   CheckCircle2,
   XCircle,
   History,
   AlertCircle,
-  Upload,
   Users,
   Gavel,
   LogOut,

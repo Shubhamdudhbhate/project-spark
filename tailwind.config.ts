@@ -60,8 +60,26 @@ export default {
           DEFAULT: "hsl(var(--saffron))",
           glow: "hsl(var(--saffron-glow))",
         },
-        success: "hsl(var(--success))",
-        warning: "hsl(var(--warning))",
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        urgent: {
+          DEFAULT: "hsl(var(--urgent))",
+          foreground: "hsl(var(--urgent-foreground))",
+        },
+        pending: {
+          DEFAULT: "hsl(var(--pending))",
+          foreground: "hsl(var(--pending-foreground))",
+        },
+        active: {
+          DEFAULT: "hsl(var(--active))",
+          foreground: "hsl(var(--active-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
