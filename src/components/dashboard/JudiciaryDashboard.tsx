@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -9,73 +9,61 @@ import { LiveCauseList, CauseListItem } from "./LiveCauseList";
 import { JudgmentQueue, JudgmentItem } from "./JudgmentQueue";
 import { QuickJudicialNotes } from "./QuickJudicialNotes";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock data for demonstration
-const mockCauseList: CauseListItem[] = [
-  {
-    id: "1",
-    srNo: 1,
-    caseNumber: "WP/1024/2025",
-    parties: "State of Maharashtra vs. Sharma Industries Pvt. Ltd.",
-    caseType: "Writ Petition",
-    stage: "Arguments",
-    status: "scheduled",
-    time: "10:30 AM",
+// Transform database cases to CauseListItem format
+const transformCaseToCauseListItem = (
+  dbCase: {
+    id: string;
+    case_number: string;
+    title: string;
+    status: string;
+    next_hearing_date: string | null;
+    priority: string | null;
   },
-  {
-    id: "2",
-    srNo: 2,
-    caseNumber: "BA/0542/2025",
-    parties: "Rajesh Kumar vs. State of Gujarat",
-    caseType: "Bail Application",
-    stage: "Hearing",
-    status: "scheduled",
-    isUrgent: true,
-    time: "11:00 AM",
-  },
-  {
-    id: "3",
-    srNo: 3,
-    caseNumber: "CS/2187/2024",
-    parties: "Aarav Tech Solutions vs. Nexus Innovations",
-    caseType: "Civil Suit",
-    stage: "Evidence",
-    status: "scheduled",
-    time: "11:30 AM",
-  },
-  {
-    id: "4",
-    srNo: 4,
-    caseNumber: "CRL/0891/2025",
-    parties: "State vs. Mehta & Associates",
-    caseType: "Criminal Appeal",
-    stage: "Final Arguments",
-    status: "scheduled",
-    time: "12:00 PM",
-  },
-  {
-    id: "5",
-    srNo: 5,
-    caseNumber: "WP/2045/2024",
-    parties: "Environmental Action Forum vs. Union of India",
-    caseType: "PIL",
-    stage: "Directions",
-    status: "scheduled",
-    isUrgent: true,
-    time: "02:00 PM",
-  },
-  {
-    id: "6",
-    srNo: 6,
-    caseNumber: "MA/0123/2025",
-    parties: "Priya Enterprises vs. State Bank of India",
-    caseType: "Misc. Application",
-    stage: "Consideration",
-    status: "scheduled",
-    time: "02:30 PM",
-  },
-];
+  index: number
+): CauseListItem => {
+  const getCaseType = (title: string): string => {
+    if (title.toLowerCase().includes("writ")) return "Writ Petition";
+    if (title.toLowerCase().includes("bail")) return "Bail Application";
+    if (title.toLowerCase().includes("civil")) return "Civil Suit";
+    if (title.toLowerCase().includes("criminal")) return "Criminal Appeal";
+    return "Miscellaneous";
+  };
 
+  const getStage = (status: string): string => {
+    switch (status) {
+      case "pending": return "Filing";
+      case "active": return "Arguments";
+      case "hearing": return "Hearing";
+      case "verdict_pending": return "Reserved";
+      default: return "Scheduled";
+    }
+  };
+
+  const mapStatus = (status: string): "scheduled" | "in-progress" | "completed" | "adjourned" => {
+    switch (status) {
+      case "closed": return "completed";
+      case "hearing": return "in-progress";
+      case "appealed": return "adjourned";
+      default: return "scheduled";
+    }
+  };
+
+  return {
+    id: dbCase.id,
+    srNo: index + 1,
+    caseNumber: dbCase.case_number,
+    parties: dbCase.title,
+    caseType: getCaseType(dbCase.title),
+    stage: getStage(dbCase.status),
+    status: mapStatus(dbCase.status),
+    time: dbCase.next_hearing_date ? new Date(dbCase.next_hearing_date).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : undefined,
+    isUrgent: dbCase.priority === "urgent",
+  };
+};
+
+// Mock data for judgment queue (this would come from DB in production)
 const mockJudgmentQueue: JudgmentItem[] = [
   {
     id: "j1",
@@ -117,18 +105,47 @@ export const JudiciaryDashboard = () => {
   const navigate = useNavigate();
   const [currentHearingId, setCurrentHearingId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [causeList, setCauseList] = useState<CauseListItem[]>([]);
+  const [, setIsLoading] = useState(true);
 
   const judgeName = profile?.full_name || "Shubham Patel";
 
-  const currentCase = mockCauseList.find((c) => c.id === currentHearingId);
+  // Fetch real cases from database
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        const { data: cases, error } = await supabase
+          .from("cases")
+          .select("id, case_number, title, status, next_hearing_date, priority")
+          .order("next_hearing_date", { ascending: true })
+          .limit(20);
+
+        if (error) throw error;
+
+        if (cases) {
+          const transformedCases = cases.map((c, index) => transformCaseToCauseListItem(c, index));
+          setCauseList(transformedCases);
+        }
+      } catch (error) {
+        console.error("Error fetching cases:", error);
+        toast.error("Failed to load cases");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCases();
+  }, []);
+
+  const currentCase = causeList.find((c) => c.id === currentHearingId);
 
   const handleStartHearing = useCallback((id: string) => {
     setCurrentHearingId(id);
-    const caseItem = mockCauseList.find((c) => c.id === id);
+    const caseItem = causeList.find((c) => c.id === id);
     toast.success(`Hearing started for ${caseItem?.caseNumber}`, {
       description: caseItem?.parties,
     });
-  }, []);
+  }, [causeList]);
 
   const handleOpenCaseFile = useCallback((id: string) => {
     navigate(`/cases/${id}`);
@@ -141,15 +158,17 @@ export const JudiciaryDashboard = () => {
   }, []);
 
   const handlePassOrder = useCallback((id: string) => {
-    const caseItem = mockCauseList.find((c) => c.id === id);
+    const caseItem = causeList.find((c) => c.id === id);
     toast.success(`Order passed for ${caseItem?.caseNumber}`);
     setCurrentHearingId(null);
     setNotes("");
-  }, []);
+  }, [causeList]);
 
-  const handleOpenJudgment = useCallback((id: string) => {
-    navigate(`/judgment/${id}`);
-  }, [navigate]);
+  const handleOpenJudgment = useCallback((_id: string) => {
+    toast.info("Judgment Writer - Coming Soon", {
+      description: "This feature is under development",
+    });
+  }, []);
 
   const handleSaveNotes = useCallback((newNotes: string) => {
     setNotes(newNotes);
@@ -188,7 +207,7 @@ export const JudiciaryDashboard = () => {
               className="lg:col-span-3"
             >
               <LiveCauseList
-                items={mockCauseList}
+                items={causeList}
                 currentHearingId={currentHearingId}
                 onStartHearing={handleStartHearing}
                 onOpenCaseFile={handleOpenCaseFile}
