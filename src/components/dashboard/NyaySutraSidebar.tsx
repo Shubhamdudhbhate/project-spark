@@ -31,16 +31,16 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { id: "cause-list", label: "Today's Cause List", icon: ListOrdered, path: "/dashboard", comingSoon: true },
+  { id: "cause-list", label: "Today's Cause List", icon: ListOrdered, path: "/cause-list" },
   { id: "cases", label: "Case Repository", icon: FolderOpen, path: "/courts" },
-  { id: "judgment", label: "Judgment Writer", icon: PenLine, path: "/dashboard", comingSoon: true },
-  { id: "evidence", label: "Evidence Vault", icon: Archive, path: "/dashboard", comingSoon: true },
-  { id: "calendar", label: "Court Calendar", icon: Calendar, path: "/dashboard", comingSoon: true },
-  { id: "analytics", label: "Analytics", icon: BarChart3, path: "/dashboard", comingSoon: true },
+  { id: "judgment", label: "Judgment Writer", icon: PenLine, path: "/judgment-writer" },
+  { id: "evidence", label: "Evidence Vault", icon: Archive, path: "/evidence-vault" },
+  { id: "calendar", label: "Court Calendar", icon: Calendar, path: "/court-calendar" },
+  { id: "analytics", label: "Analytics", icon: BarChart3, path: "/analytics" },
 ];
 
 const bottomNavItems: NavItem[] = [
-  { id: "health", label: "System Health", icon: Activity, path: "/dashboard", comingSoon: true },
+  { id: "health", label: "System Health", icon: Activity, path: "/system-health" },
   { id: "logout", label: "Log Out", icon: LogOut, path: "/auth" },
 ];
 
@@ -53,6 +53,12 @@ export const NyaySutraSidebar = () => {
   const isActive = (path: string, id: string) => {
     if (id === "dashboard") return location.pathname === "/dashboard";
     if (id === "cases") return location.pathname.startsWith("/courts") || location.pathname.startsWith("/sections");
+    if (id === "cause-list") return location.pathname === "/cause-list";
+    if (id === "judgment") return location.pathname === "/judgment-writer";
+    if (id === "evidence") return location.pathname === "/evidence-vault";
+    if (id === "calendar") return location.pathname === "/court-calendar";
+    if (id === "analytics") return location.pathname === "/analytics";
+    if (id === "health") return location.pathname === "/system-health";
     return location.pathname === path;
   };
 

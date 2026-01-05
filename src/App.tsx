@@ -18,6 +18,12 @@ import Courts from "./pages/Courts";
 import Sections from "./pages/Sections";
 import CaseBlocks from "./pages/CaseBlocks";
 import CaseDetails from "./pages/CaseDetails";
+import CauseList from "./pages/CauseList";
+import JudgmentWriter from "./pages/JudgmentWriter";
+import EvidenceVault from "./pages/EvidenceVault";
+import CourtCalendar from "./pages/CourtCalendar";
+import Analytics from "./pages/Analytics";
+import SystemHealth from "./pages/SystemHealth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -94,6 +100,12 @@ const AppRoutes = () => (
     {/* Protected Routes - Glassmorphism Layout */}
     <Route element={<ProtectedRoute />}>
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/cause-list" element={<CauseList />} />
+      <Route path="/judgment-writer" element={<JudgmentWriter />} />
+      <Route path="/evidence-vault" element={<EvidenceVault />} />
+      <Route path="/court-calendar" element={<CourtCalendar />} />
+      <Route path="/analytics" element={<Analytics />} />
+      <Route path="/system-health" element={<SystemHealth />} />
       <Route path="/courts" element={<Courts />} />
       <Route path="/courts/:courtId/sections" element={<Sections />} />
       <Route path="/sections/:sectionId/blocks" element={<CaseBlocks />} />
