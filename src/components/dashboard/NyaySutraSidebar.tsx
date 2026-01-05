@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import {
   LayoutDashboard,
   ListOrdered,
@@ -17,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavItem {
   id: string;
@@ -24,20 +26,21 @@ interface NavItem {
   icon: React.ElementType;
   path: string;
   badge?: number;
+  comingSoon?: boolean;
 }
 
 const navItems: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { id: "cause-list", label: "Today's Cause List", icon: ListOrdered, path: "/cause-list" },
-  { id: "cases", label: "Case Repository", icon: FolderOpen, path: "/cases" },
-  { id: "judgment", label: "Judgment Writer", icon: PenLine, path: "/judgment" },
-  { id: "evidence", label: "Evidence Vault", icon: Archive, path: "/evidence" },
-  { id: "calendar", label: "Court Calendar", icon: Calendar, path: "/calendar" },
-  { id: "analytics", label: "Analytics", icon: BarChart3, path: "/analytics" },
+  { id: "cause-list", label: "Today's Cause List", icon: ListOrdered, path: "/dashboard", comingSoon: true },
+  { id: "cases", label: "Case Repository", icon: FolderOpen, path: "/courts" },
+  { id: "judgment", label: "Judgment Writer", icon: PenLine, path: "/dashboard", comingSoon: true },
+  { id: "evidence", label: "Evidence Vault", icon: Archive, path: "/dashboard", comingSoon: true },
+  { id: "calendar", label: "Court Calendar", icon: Calendar, path: "/dashboard", comingSoon: true },
+  { id: "analytics", label: "Analytics", icon: BarChart3, path: "/dashboard", comingSoon: true },
 ];
 
 const bottomNavItems: NavItem[] = [
-  { id: "health", label: "System Health", icon: Activity, path: "/health" },
+  { id: "health", label: "System Health", icon: Activity, path: "/dashboard", comingSoon: true },
   { id: "logout", label: "Log Out", icon: LogOut, path: "/auth" },
 ];
 
@@ -45,20 +48,41 @@ export const NyaySutraSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { signOut } = useAuth();
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + "/");
+  const isActive = (path: string, id: string) => {
+    if (id === "dashboard") return location.pathname === "/dashboard";
+    if (id === "cases") return location.pathname.startsWith("/courts") || location.pathname.startsWith("/sections");
+    return location.pathname === path;
+  };
+
+  const handleNavigation = async (item: NavItem) => {
+    if (item.id === "logout") {
+      await signOut();
+      navigate("/");
+      return;
+    }
+    if (item.comingSoon) {
+      toast.info(`${item.label} - Coming Soon`, {
+        description: "This feature is under development",
+      });
+      return;
+    }
+    navigate(item.path);
+  };
 
   const NavItemComponent = ({ item, isBottom = false }: { item: NavItem; isBottom?: boolean }) => {
+    void isBottom; // Mark as intentionally unused
     const Icon = item.icon;
-    const active = isActive(item.path);
+    const active = isActive(item.path, item.id);
 
     const content = (
       <button
-        onClick={() => navigate(item.path)}
+        onClick={() => handleNavigation(item)}
         className={cn(
           "nav-item w-full",
-          active && "active",
-          isBottom && item.id === "logout" && "text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+          active && !item.comingSoon && "active",
+          item.comingSoon && "opacity-60"
         )}
       >
         <Icon className="h-5 w-5 flex-shrink-0" />
@@ -66,6 +90,11 @@ export const NyaySutraSidebar = () => {
         {!collapsed && item.badge && (
           <span className="ml-auto bg-urgent text-urgent-foreground text-xs font-bold px-2 py-0.5 rounded-full">
             {item.badge}
+          </span>
+        )}
+        {!collapsed && item.comingSoon && (
+          <span className="ml-auto text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            Soon
           </span>
         )}
       </button>
@@ -76,7 +105,7 @@ export const NyaySutraSidebar = () => {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="right" className="font-medium">
-            {item.label}
+            {item.label} {item.comingSoon && "(Coming Soon)"}
           </TooltipContent>
         </Tooltip>
       );
