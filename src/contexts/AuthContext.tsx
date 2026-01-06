@@ -10,6 +10,7 @@ type Profile = {
   email: string;
   full_name: string;
   role_category: RoleCategory;
+  unique_id: string | null;
 };
 
 type AuthContextType = {

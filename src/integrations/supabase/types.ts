@@ -394,6 +394,7 @@ export type Database = {
           id: string
           phone: string | null
           role_category: Database["public"]["Enums"]["role_category"]
+          unique_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -407,6 +408,7 @@ export type Database = {
           id?: string
           phone?: string | null
           role_category?: Database["public"]["Enums"]["role_category"]
+          unique_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -420,6 +422,7 @@ export type Database = {
           id?: string
           phone?: string | null
           role_category?: Database["public"]["Enums"]["role_category"]
+          unique_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
