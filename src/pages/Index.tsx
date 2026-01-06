@@ -73,7 +73,7 @@ const Index = forwardRef<HTMLDivElement>((_, ref) => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/courts', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
