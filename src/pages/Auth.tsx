@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Gavel, Scale, Users, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Gavel, Scale, Users, Loader2, ArrowLeft, Eye, EyeOff, UserCheck, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type RoleCategory = 'judiciary' | 'legal_practitioner' | 'public_party';
 
@@ -19,6 +21,8 @@ const roleConfig = {
     theme: 'text-amber-400',
     border: 'border-amber-500/30',
     bg: 'bg-amber-500/10',
+    idLabel: 'Judge ID',
+    idPlaceholder: 'e.g., JDG-2024-A1B2C',
   },
   legal_practitioner: {
     title: 'Legal Practitioner Portal',
@@ -27,6 +31,8 @@ const roleConfig = {
     theme: 'text-primary',
     border: 'border-primary/30',
     bg: 'bg-primary/10',
+    idLabel: 'Bar Council ID',
+    idPlaceholder: 'e.g., ADV-MH-12345',
   },
   public_party: {
     title: 'Public Portal',
@@ -35,17 +41,22 @@ const roleConfig = {
     theme: 'text-slate-400',
     border: 'border-slate-500/30',
     bg: 'bg-slate-500/10',
+    idLabel: 'Citizen ID',
+    idPlaceholder: 'e.g., CIT-2024-XYZ',
   },
 };
 
 const signInSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  uniqueId: z.string().min(3, 'ID must be at least 3 characters').max(50, 'ID must be less than 50 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 const signUpSchema = z.object({
-  fullName: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
+  fullName: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must be less than 100 characters'),
+  uniqueId: z.string()
+    .min(3, 'ID must be at least 3 characters')
+    .max(50, 'ID must be less than 50 characters')
+    .regex(/^[a-zA-Z0-9\-_]+$/, 'ID can only contain letters, numbers, hyphens and underscores'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -56,7 +67,7 @@ const signUpSchema = z.object({
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { signIn, signUp, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   
   const roleParam = searchParams.get('role') as RoleCategory | null;
   const role: RoleCategory = roleParam && roleConfig[roleParam] ? roleParam : 'public_party';
@@ -70,7 +81,7 @@ const Auth = () => {
   
   const [formData, setFormData] = useState({
     fullName: '',
-    email: '',
+    uniqueId: '',
     password: '',
     confirmPassword: '',
   });
@@ -85,6 +96,24 @@ const Auth = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const checkUniqueIdExists = async (uniqueId: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('unique_id')
+      .eq('unique_id', uniqueId)
+      .maybeSingle();
+    return !!data;
+  };
+
+  const getEmailByUniqueId = async (uniqueId: string): Promise<string | null> => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('unique_id', uniqueId)
+      .maybeSingle();
+    return data?.email || null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,10 +134,39 @@ const Auth = () => {
           return;
         }
 
-        const { error } = await signUp(formData.email, formData.password, formData.fullName, role);
-        if (!error) {
-          navigate('/dashboard', { replace: true });
+        // Check if unique ID already exists
+        const idExists = await checkUniqueIdExists(formData.uniqueId);
+        if (idExists) {
+          setErrors({ uniqueId: 'This ID is already registered' });
+          setIsLoading(false);
+          return;
         }
+
+        // Create email from unique ID for Supabase auth
+        const generatedEmail = `${formData.uniqueId.toLowerCase()}@nyaysutra.court`;
+        const redirectUrl = `${window.location.origin}/`;
+
+        const { error } = await supabase.auth.signUp({
+          email: generatedEmail,
+          password: formData.password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              full_name: formData.fullName,
+              role_category: role,
+              unique_id: formData.uniqueId,
+            },
+          },
+        });
+
+        if (error) {
+          toast.error(error.message);
+          setIsLoading(false);
+          return;
+        }
+
+        toast.success('Account created successfully! Welcome to NyaySutra.');
+        navigate('/dashboard', { replace: true });
       } else {
         const result = signInSchema.safeParse(formData);
         if (!result.success) {
@@ -121,11 +179,34 @@ const Auth = () => {
           return;
         }
 
-        const { error } = await signIn(formData.email, formData.password);
-        if (!error) {
-          navigate('/dashboard', { replace: true });
+        // Get email associated with this unique ID
+        const email = await getEmailByUniqueId(formData.uniqueId);
+        if (!email) {
+          setErrors({ uniqueId: 'No account found with this ID' });
+          setIsLoading(false);
+          return;
         }
+
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password: formData.password,
+        });
+
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            setErrors({ password: 'Incorrect password' });
+          } else {
+            toast.error(error.message);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        toast.success('Signed in successfully!');
+        navigate('/dashboard', { replace: true });
       }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -206,7 +287,10 @@ const Auth = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName" className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-muted-foreground" />
+                  Full Name
+                </Label>
                 <Input
                   id="fullName"
                   name="fullName"
@@ -222,18 +306,25 @@ const Auth = () => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="uniqueId" className="flex items-center gap-2">
+                <Key className="w-4 h-4 text-muted-foreground" />
+                {config.idLabel}
+              </Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
+                id="uniqueId"
+                name="uniqueId"
+                placeholder={config.idPlaceholder}
+                value={formData.uniqueId}
                 onChange={handleChange}
-                className={cn("bg-secondary/30", errors.email && 'border-destructive')}
+                className={cn("bg-secondary/30 font-mono", errors.uniqueId && 'border-destructive')}
               />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email}</p>
+              {errors.uniqueId && (
+                <p className="text-xs text-destructive">{errors.uniqueId}</p>
+              )}
+              {isSignUp && (
+                <p className="text-xs text-muted-foreground">
+                  This unique ID will be used for all future logins
+                </p>
               )}
             </div>
 
